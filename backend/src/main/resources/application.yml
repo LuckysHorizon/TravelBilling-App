@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: travelbill-pro
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/travelbill
+    username: travelbill
+    password: securepassword
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Redis Configuration
+  redis:
+    host: localhost
+    port: 6379
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  # SMTP Configuration
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: smtpuser
+    password: smtppassword
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            
+  # File Upload Config
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 500MB
+
+# TravelBill Pro Custom Configuration
+app:
+  storage:
+    base-path: ./data/storage
+  security:
+    jwt:
+      secret: "dHJhdmVsYmlsbC1wcm8tdmVyeS1zZWN1cmUtYW5kLWxvbmctc2VjcmV0LWtleS1mb3Itand0LXNpZ25hdHVyZQ=="
+      access-token-expiration-ms: 28800000 # 8 hours
+      refresh-token-expiration-ms: 604800000 # 7 days
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+  rate-limit:
+    ip: 500
+    user: 200
+
+logging:
+  level:
+    com.travelbillpro: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN

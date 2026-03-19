@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-brand-paper text-brand-dark antialiased;
+    font-family: "Plus Jakarta Sans", sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6, .playfair {
+    font-family: "Playfair Display", serif;
+  }
+
+  code, pre, .mono {
+    font-family: "JetBrains Mono", monospace;
+  }
+}
+
+/* Ant Design overrides that shouldn't conflict with Tailwind */
+.ant-btn-primary {
+  @apply bg-brand-dark hover:bg-black !important;
+}
+
+.ant-menu-dark {
+  @apply bg-brand-dark !important;
+}
+
+.ant-layout-sider {
+  @apply bg-brand-dark !important;
+}
+
+.ant-card {
+  @apply shadow-card border-none !important;
+}

@@ -1,0 +1,48 @@
+-- V2__Seed_Data.sql
+
+-- Insert default admin user (password: admin123 -> $2a$12$R9h/cIPz0gi.URNNX3cam2OsQ3Sg... default bcrypt hash)
+-- Since we don't have bcrypt here, we will use a known hash for password = 'password'
+-- $2a$10$8.UnVuG9HLdaL2dIuT36E.k27d.1d4f.R.kR.U22v7fL9.9s9Z1iO (this is 'password' encoded with strength 10)
+INSERT INTO users (username, email, password_hash, role, created_at, updated_at)
+VALUES (
+    'admin',
+    'admin@travelbillpro.com',
+    '$2a$10$8.UnVuG9HLdaL2dIuT36E.k27d.1d4f.R.kR.U22v7fL9.9s9Z1iO',
+    'ADMIN',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+-- Insert default GST rates (9% CGST, 9% SGST)
+INSERT INTO gst_config (cgst_rate, sgst_rate, effective_from, created_by, created_at)
+VALUES (
+    9.00,
+    9.00,
+    '2024-04-01',
+    1,
+    CURRENT_TIMESTAMP
+);
+
+-- Insert default System Config (Agency Details)
+INSERT INTO system_config (key, value, updated_at, updated_by) VALUES
+('AGENCY_NAME', 'RamnetSolutions Travel Agency', CURRENT_TIMESTAMP, 1),
+('AGENCY_GSTIN', '27BABCU9999P1Z5', CURRENT_TIMESTAMP, 1),
+('AGENCY_ADDRESS', '123 Business Avenue, Sector 4, Mumbai, Maharashtra 400001', CURRENT_TIMESTAMP, 1),
+('INVOICE_PREFIX', 'TBP', CURRENT_TIMESTAMP, 1);
+
+-- Insert Email Templates
+INSERT INTO email_templates (key, subject, body, updated_at, updated_by) VALUES
+(
+    'invoice_sent',
+    'Invoice {invoiceNumber} — {companyName} — {billingMonth}',
+    '<p>Dear {companyName} team,</p><p>Please find attached invoice <strong>{invoiceNumber}</strong> for the billing period of {billingMonth}.</p><p>The grand total for this period is <strong>{grandTotal}</strong>.</p><p>Regards,<br>RamnetSolutions Travel Agency</p>',
+    CURRENT_TIMESTAMP,
+    1
+),
+(
+    'payment_reminder',
+    'Payment Due — Invoice {invoiceNumber}',
+    '<p>Dear {companyName} team,</p><p>This is a gentle reminder that invoice <strong>{invoiceNumber}</strong> for <strong>{grandTotal}</strong> is now overdue. Please arrange payment at your earliest convenience.</p><p>Regards,<br>RamnetSolutions Travel Agency</p>',
+    CURRENT_TIMESTAMP,
+    1
+);

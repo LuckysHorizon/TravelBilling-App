@@ -1,0 +1,109 @@
+package com.travelbillpro.service;
+
+import com.travelbillpro.dto.CompanyDto;
+import com.travelbillpro.entity.Company;
+import com.travelbillpro.entity.User;
+import com.travelbillpro.exception.BusinessException;
+import com.travelbillpro.repository.CompanyRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class CompanyService {
+
+    private final CompanyRepository companyRepository;
+    private final AuditService auditService;
+
+    @Transactional(readOnly = true)
+    public Page<CompanyDto.CompanyResponse> getAllCompanies(String search, Pageable pageable) {
+        Page<Company> companies;
+        if (search != null && !search.trim().isEmpty()) {
+            companies = companyRepository.findByNameContainingIgnoreCase(search, pageable);
+        } else {
+            companies = companyRepository.findAll(pageable);
+        }
+        return companies.map(this::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Company getCompanyEntity(Long id) {
+        return companyRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("Company not found", "COMPANY_NOT_FOUND", HttpStatus.NOT_FOUND));
+    }
+    
+    @Transactional(readOnly = true)
+    public CompanyDto.CompanyResponse getCompanyById(Long id) {
+        return mapToResponse(getCompanyEntity(id));
+    }
+
+    @Transactional
+    public CompanyDto.CompanyResponse createCompany(CompanyDto.CreateCompanyRequest request, User user) {
+        if (companyRepository.existsByGstNumber(request.getGstNumber())) {
+            throw new BusinessException("Company with GST number already exists", "GST_EXISTS", HttpStatus.CONFLICT);
+        }
+
+        Company company = new Company();
+        company.setName(request.getName());
+        company.setGstNumber(request.getGstNumber());
+        company.setBillingEmail(request.getBillingEmail());
+        company.setAddress(request.getAddress());
+        company.setServiceChargePct(request.getServiceChargePct());
+        company.setBillingCycle(request.getBillingCycle());
+        company.setCreditLimit(request.getCreditLimit());
+        company.setCreatedBy(user);
+        company.setIsActive(true);
+
+        Company savedCompany = companyRepository.save(company);
+        auditService.logAction("COMPANY", savedCompany.getId(), "CREATED", null, request, user);
+        
+        return mapToResponse(savedCompany);
+    }
+
+    @Transactional
+    public CompanyDto.CompanyResponse updateCompany(Long id, CompanyDto.CreateCompanyRequest request, User user) {
+        Company company = getCompanyEntity(id);
+
+        if (!company.getGstNumber().equals(request.getGstNumber()) &&
+                companyRepository.existsByGstNumber(request.getGstNumber())) {
+            throw new BusinessException("Company with GST number already exists", "GST_EXISTS", HttpStatus.CONFLICT);
+        }
+
+        CompanyDto.CompanyResponse oldValue = mapToResponse(company);
+
+        company.setName(request.getName());
+        company.setGstNumber(request.getGstNumber());
+        company.setBillingEmail(request.getBillingEmail());
+        company.setAddress(request.getAddress());
+        company.setServiceChargePct(request.getServiceChargePct());
+        company.setBillingCycle(request.getBillingCycle());
+        company.setCreditLimit(request.getCreditLimit());
+
+        Company savedCompany = companyRepository.save(company);
+        CompanyDto.CompanyResponse newValue = mapToResponse(savedCompany);
+        
+        auditService.logAction("COMPANY", savedCompany.getId(), "UPDATED", oldValue, newValue, user);
+        
+        return newValue;
+    }
+
+    private CompanyDto.CompanyResponse mapToResponse(Company company) {
+        CompanyDto.CompanyResponse response = new CompanyDto.CompanyResponse();
+        response.setId(company.getId());
+        response.setName(company.getName());
+        response.setGstNumber(company.getGstNumber());
+        response.setBillingEmail(company.getBillingEmail());
+        response.setAddress(company.getAddress());
+        response.setServiceChargePct(company.getServiceChargePct());
+        response.setBillingCycle(company.getBillingCycle());
+        response.setCreditLimit(company.getCreditLimit());
+        response.setIsActive(company.getIsActive());
+        response.setCreatedAt(company.getCreatedAt());
+        response.setCreatedById(company.getCreatedBy() != null ? company.getCreatedBy().getId() : null);
+        return response;
+    }
+}
