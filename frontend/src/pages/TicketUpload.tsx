@@ -41,9 +41,11 @@ const TicketUpload = () => {
       const response = await api.post('/tickets/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      message.success('Tickets uploaded successfully. OCR + AI extraction in progress.');
       if (response.data && response.data.length > 0) {
+        message.success(`Tickets uploaded and extracted successfully (${response.data.length} record(s)).`);
         navigate('/tickets'); 
+      } else {
+        message.error('Upload completed, but OCR + AI extraction did not return any tickets.');
       }
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Upload failed');

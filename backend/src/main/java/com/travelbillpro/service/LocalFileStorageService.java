@@ -20,9 +20,15 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.travelbillpro.entity.Company;
+import com.travelbillpro.repository.CompanyRepository;
+
 @Service
 @Slf4j
+@lombok.RequiredArgsConstructor
 public class LocalFileStorageService {
+
+    private final CompanyRepository companyRepository;
 
     @Value("${app.storage.base-path}")
     private String basePath;
@@ -31,7 +37,7 @@ public class LocalFileStorageService {
 
     @PostConstruct
     public void init() {
-        this.rootLocation = Paths.get(basePath);
+        this.rootLocation = Paths.get(basePath).toAbsolutePath().normalize();
         try {
             Files.createDirectories(rootLocation);
             Files.createDirectories(rootLocation.resolve("tickets"));
@@ -43,7 +49,7 @@ public class LocalFileStorageService {
 
     /**
      * Stores a ticket file in the format: tickets/{companyId}/{year}/{month}/{uuid}_{filename}
-     * Returns the relative path to be stored in the DB.
+     * Returns the RELATIVE path to be stored in the DB (always relative to rootLocation for consistency).
      */
     public String storeTicketContent(Long companyId, MultipartFile file) {
         if (file.isEmpty()) {
@@ -59,18 +65,40 @@ public class LocalFileStorageService {
         String year = String.valueOf(now.getYear());
         String month = String.format("%02d", now.getMonthValue());
         
-        String relativeDir = "tickets/" + companyId + "/" + year + "/" + month;
-        Path targetDir = rootLocation.resolve(relativeDir);
+        // Check if company has a custom PDF storage path
+        String customPath = null;
+        try {
+            Company company = companyRepository.findById(companyId).orElse(null);
+            if (company != null && company.getPdfStoragePath() != null && !company.getPdfStoragePath().isBlank()) {
+                customPath = company.getPdfStoragePath();
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch company {} for custom path lookup: {}", companyId, e.getMessage());
+        }
+
+        String storedFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+        Path targetDir;
+        String finalStoredPath;
+
+        if (customPath != null) {
+            // Use custom company storage path — store absolute path in DB
+            targetDir = Paths.get(customPath).resolve(year).resolve(month);
+            finalStoredPath = targetDir.resolve(storedFilename).toAbsolutePath().toString();
+        } else {
+            // Use default relative storage
+            String relativeDir = "tickets/" + companyId + "/" + year + "/" + month;
+            targetDir = rootLocation.resolve(relativeDir);
+            finalStoredPath = relativeDir + "/" + storedFilename;
+        }
         
         try {
             Files.createDirectories(targetDir);
-            
-            String storedFilename = UUID.randomUUID().toString() + "_" + originalFilename;
             Path targetFile = targetDir.resolve(storedFilename);
             
             Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
+            log.info("Stored file: {} at {}", originalFilename, targetFile);
             
-            return relativeDir + "/" + storedFilename;
+            return finalStoredPath;
             
         } catch (IOException e) {
             log.error("Failed to store file {}", originalFilename, e);
@@ -81,24 +109,27 @@ public class LocalFileStorageService {
     /**
      * Stores an invoice file (PDF or Excel)
      * Format: invoices/{companyId}/{year}/{invoiceNumber}.{ext}
+     * Returns RELATIVE path for consistency.
      */
     public String storeInvoiceFile(Long companyId, String invoiceNumber, byte[] content, String extension) {
         LocalDate now = LocalDate.now();
         String year = String.valueOf(now.getYear());
         
+        // ALWAYS use the default storage location for consistency
         String relativeDir = "invoices/" + companyId + "/" + year;
         Path targetDir = rootLocation.resolve(relativeDir);
+        String safeInvoiceNumber = invoiceNumber.replace("/", "-");
+        String storedFilename = safeInvoiceNumber + "." + extension;
+        String finalStoredPath = relativeDir + "/" + storedFilename;
         
         try {
             Files.createDirectories(targetDir);
-            
-            String safeInvoiceNumber = invoiceNumber.replace("/", "-");
-            String storedFilename = safeInvoiceNumber + "." + extension;
             Path targetFile = targetDir.resolve(storedFilename);
             
             Files.write(targetFile, content);
+            log.info("Stored invoice file: {} at {}", invoiceNumber, targetFile);
             
-            return relativeDir + "/" + storedFilename;
+            return finalStoredPath;
             
         } catch (IOException e) {
             log.error("Failed to store invoice file {}", invoiceNumber, e);
@@ -108,9 +139,17 @@ public class LocalFileStorageService {
 
     public Resource loadFileAsResource(String relativePath) {
         try {
-            Path file = rootLocation.resolve(relativePath).normalize();
-            if (!file.startsWith(rootLocation)) {
-                throw new BusinessException("Cannot read file outside storage directory", "SECURITY_ERROR", HttpStatus.FORBIDDEN);
+            Path file;
+            Path givenPath = Paths.get(relativePath);
+            if (givenPath.isAbsolute()) {
+                file = givenPath.normalize();
+                // We'll assume the path in DB is legitimate. Alternatively, verify it still exists.
+            } else {
+                if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+                file = rootLocation.resolve(relativePath).normalize().toAbsolutePath();
+                if (!file.startsWith(rootLocation)) {
+                    throw new BusinessException("Cannot read file outside storage directory", "SECURITY_ERROR", HttpStatus.FORBIDDEN);
+                }
             }
             
             Resource resource = new UrlResource(file.toUri());
@@ -128,13 +167,33 @@ public class LocalFileStorageService {
         if (relativePath == null || relativePath.trim().isEmpty()) return;
         
         try {
-            Path file = rootLocation.resolve(relativePath).normalize();
-            if (!file.startsWith(rootLocation)) {
-                throw new BusinessException("Cannot delete file outside storage directory", "SECURITY_ERROR", HttpStatus.FORBIDDEN);
+            Path file;
+            Path givenPath = Paths.get(relativePath);
+            if (givenPath.isAbsolute()) {
+                file = givenPath.normalize();
+            } else {
+                if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+                file = rootLocation.resolve(relativePath).normalize().toAbsolutePath();
+                if (!file.startsWith(rootLocation)) {
+                    throw new BusinessException("Cannot delete file outside storage directory", "SECURITY_ERROR", HttpStatus.FORBIDDEN);
+                }
             }
             Files.deleteIfExists(file);
         } catch (IOException e) {
             log.warn("Failed to delete file: {}", relativePath, e);
         }
+    }
+    /**
+     * Resolve a stored file path to its absolute path on disk.
+     * If the stored path is already absolute (custom company storage), return as-is.
+     * Otherwise, resolve relative to the rootLocation.
+     * Python extraction service needs the absolute path to read the file.
+     */
+    public String resolveAbsolutePath(String storedPath) {
+        Path givenPath = Paths.get(storedPath);
+        if (givenPath.isAbsolute()) {
+            return givenPath.normalize().toAbsolutePath().toString();
+        }
+        return rootLocation.resolve(storedPath).normalize().toAbsolutePath().toString();
     }
 }

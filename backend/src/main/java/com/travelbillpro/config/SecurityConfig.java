@@ -34,16 +34,17 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable) // Disabled for stateless APIs. Need to implement CSRF tokens if modifying state via cookies
+                .headers(headers -> headers.frameOptions(frame -> frame.disable()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/api/public/**",
+                                "/api/files/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/files/**").authenticated() // Require auth for files
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

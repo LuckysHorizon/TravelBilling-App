@@ -60,6 +60,7 @@ public class CompanyService {
         company.setServiceChargePct(request.getServiceChargePct());
         company.setBillingCycle(request.getBillingCycle());
         company.setCreditLimit(request.getCreditLimit());
+        company.setPdfStoragePath(request.getPdfStoragePath());
         company.setCreatedBy(user);
         company.setIsActive(true);
 
@@ -92,6 +93,7 @@ public class CompanyService {
         company.setServiceChargePct(request.getServiceChargePct());
         company.setBillingCycle(request.getBillingCycle());
         company.setCreditLimit(request.getCreditLimit());
+        company.setPdfStoragePath(request.getPdfStoragePath());
 
         Company savedCompany = companyRepository.save(company);
         CompanyDto.CompanyResponse newValue = mapToResponse(savedCompany);
@@ -116,6 +118,7 @@ public class CompanyService {
         response.setServiceChargePct(company.getServiceChargePct());
         response.setBillingCycle(company.getBillingCycle());
         response.setCreditLimit(company.getCreditLimit());
+        response.setPdfStoragePath(company.getPdfStoragePath());
         response.setActive(company.getIsActive());
         response.setCreatedAt(company.getCreatedAt());
         response.setCreatedById(company.getCreatedBy() != null ? company.getCreatedBy().getId() : null);

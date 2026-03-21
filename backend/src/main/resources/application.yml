@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    include: secret
   application:
     name: travelbill-pro
   
@@ -15,6 +17,7 @@ spring:
 
   # JPA Configuration
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     show-sql: false
@@ -65,16 +68,33 @@ app:
       secret: ${JWT_SECRET:dHJhdmVsYmlsbC1wcm8tdmVyeS1zZWN1cmUtYW5kLWxvbmctc2VjcmV0LWtleS1mb3Itand0LXNpZ25hdHVyZQ==}
       access-token-expiration-ms: 28800000 # 8 hours
       refresh-token-expiration-ms: 604800000 # 7 days
-  gemini:
-    api-key: ${GEMINI_API_KEY:}
+  nvidia:
+    api-key: ${NVIDIA_API_KEY:}
+    base-url: https://integrate.api.nvidia.com/v1
+    model-text: meta/llama-3.1-70b-instruct
+    model-vision: meta/llama-3.2-90b-vision-instruct
+    max-tokens: 4096
+    timeout-seconds: 90
+    rate-limit-per-minute: 38
   rate-limit:
     ip: 500
     user: 200
+
+# Python PDF Extraction Microservice
+extraction:
+  service:
+    url: ${EXTRACTION_SERVICE_URL:http://localhost:8000/extract}
+    health-url: ${EXTRACTION_HEALTH_URL:http://localhost:8000/health}
+    timeout-seconds: ${EXTRACTION_TIMEOUT:120}
 
 logging:
   level:
     com.travelbillpro: DEBUG
     org.springframework.security: INFO
     org.hibernate.SQL: WARN
+    org.apache.pdfbox.pdmodel.font: ERROR
   file:
     name: logs/app.log
+  charset:
+    console: UTF-8
+    file: UTF-8

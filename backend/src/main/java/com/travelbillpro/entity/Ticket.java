@@ -24,17 +24,17 @@ public class Ticket {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    @Column(name = "pnr_number", nullable = false, unique = true, length = 20)
+    @Column(name = "pnr_number", length = 20)
     private String pnrNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "ticket_type", nullable = false, length = 10)
     private TicketType ticketType;
 
-    @Column(name = "passenger_name", nullable = false)
+    @Column(name = "passenger_name")
     private String passengerName;
 
-    @Column(name = "travel_date", nullable = false)
+    @Column(name = "travel_date")
     private LocalDate travelDate;
 
     @Column(length = 100)
@@ -46,19 +46,19 @@ public class Ticket {
     @Column(name = "operator_name", length = 150)
     private String operatorName;
 
-    @Column(name = "base_fare", nullable = false, precision = 10, scale = 2)
+    @Column(name = "base_fare", precision = 10, scale = 2)
     private BigDecimal baseFare;
 
-    @Column(name = "service_charge", nullable = false, precision = 10, scale = 2)
+    @Column(name = "service_charge", precision = 10, scale = 2)
     private BigDecimal serviceCharge;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal cgst;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal sgst;
 
-    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
+    @Column(name = "total_amount", precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)

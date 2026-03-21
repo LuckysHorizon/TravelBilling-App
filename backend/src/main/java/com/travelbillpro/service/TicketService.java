@@ -1,15 +1,21 @@
 package com.travelbillpro.service;
 
+import com.travelbillpro.client.PythonExtractionClient;
 import com.travelbillpro.dto.TicketDto;
 import com.travelbillpro.dto.TicketExtractionResult;
 import com.travelbillpro.entity.Company;
+import com.travelbillpro.entity.ExtractionAudit;
 import com.travelbillpro.entity.GstConfig;
 import com.travelbillpro.entity.Ticket;
 import com.travelbillpro.entity.User;
 import com.travelbillpro.enums.TicketStatus;
 import com.travelbillpro.enums.TicketType;
 import com.travelbillpro.exception.BusinessException;
+import com.travelbillpro.exception.ExtractionException;
+import com.travelbillpro.exception.NvidiaApiException;
+import com.travelbillpro.exception.PdfExtractionException;
 import com.travelbillpro.repository.CompanyRepository;
+import com.travelbillpro.repository.ExtractionAuditRepository;
 import com.travelbillpro.repository.GstConfigRepository;
 import com.travelbillpro.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +30,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -35,10 +44,21 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final CompanyRepository companyRepository;
     private final GstConfigRepository gstConfigRepository;
+    private final ExtractionAuditRepository extractionAuditRepository;
     private final LocalFileStorageService fileStorageService;
     private final TicketParserService ticketParserService;
-    private final AiExtractionService aiExtractionService;
+    private final NvidiaExtractionService nvidiaExtractionService;
     private final AuditService auditService;
+    private final PythonExtractionClient pythonExtractionClient;
+    
+    // Unified extraction pipeline services
+    private final TicketPersistenceService persistenceService;
+    private final ExtractionAuditService extractionAuditService;
+    private final TicketValidationService validationService;
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  READ OPERATIONS
+    // ═════════════════════════════════════════════════════════════════════════
 
     @Transactional(readOnly = true)
     public Page<TicketDto.TicketResponse> getAllTickets(Pageable pageable) {
@@ -49,7 +69,7 @@ public class TicketService {
     public Page<TicketDto.TicketResponse> getTicketsByCompany(Long companyId, Pageable pageable) {
         return ticketRepository.findByCompanyId(companyId, pageable).map(this::mapToResponse);
     }
-    
+
     @Transactional(readOnly = true)
     public Page<TicketDto.TicketResponse> getTicketsByStatus(TicketStatus status, Pageable pageable) {
         return ticketRepository.findByStatus(status, pageable).map(this::mapToResponse);
@@ -66,85 +86,228 @@ public class TicketService {
         return mapToResponse(getTicketEntity(id));
     }
 
-    @Transactional
-    public List<TicketDto.TicketResponse> processTicketUploads(Long companyId, TicketType expectedType, List<MultipartFile> files, User user) {
+    // ═════════════════════════════════════════════════════════════════════════
+    //  UPLOAD ORCHESTRATION — main entry point
+    //  
+    //  CRITICAL: This method has NO @Transactional annotation.
+    //  - PDF parsing, AI calls, and validation happen here (outside any transaction)
+    //  - Only final DB writes open clean transactions
+    //  - Audit writes happen in their own REQUIRES_NEW transactions
+    // ═════════════════════════════════════════════════════════════════════════
+    //  UPLOAD ORCHESTRATION — UNIFIED PIPELINE
+    //  
+    //  One AI call per PDF, handles all structures (single, group, multi-leg).
+    //  The SYSTEM_PROMPT teaches the model to handle everything.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    public List<TicketDto.TicketResponse> processTicketUploads(Long companyId, TicketType expectedType,
+                                                                List<MultipartFile> files, User user) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException("Company not found", "COMPANY_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         List<TicketDto.TicketResponse> results = new ArrayList<>();
 
         for (MultipartFile file : files) {
+            long startMs = System.currentTimeMillis();
+            String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown.pdf";
+
+            AuditContext auditContext = new AuditContext(filename);
+
             try {
-                // 1. Store file locally
-                String relativePath = fileStorageService.storeTicketContent(companyId, file);
-                
-                // 2. Extract text (OCR/PDFBox)
-                String rawText = ticketParserService.extractTextFromFile(relativePath);
-                
-                // 3. Extract structured data via AI
-                TicketExtractionResult extraction = aiExtractionService.extractTicketData(rawText, expectedType);
-                
-                // 4. Create pending ticket
-                Ticket ticket = new Ticket();
-                ticket.setCompany(company);
-                ticket.setFilePath(relativePath);
-                
-                // Use a temporary PNR if extraction failed, user will fix it in review
-                if (extraction.getPnrNumber() == null || extraction.getPnrNumber().trim().isEmpty()) {
-                    ticket.setPnrNumber("PENDING_" + System.currentTimeMillis());
-                } else {
-                    // Check if PNR already exists
-                    if (ticketRepository.existsByPnrNumber(extraction.getPnrNumber())) {
-                        log.warn("Duplicate PNR detected during upload: {}", extraction.getPnrNumber());
-                        ticket.setPnrNumber(extraction.getPnrNumber() + "_DUP_" + System.currentTimeMillis());
-                    } else {
-                        ticket.setPnrNumber(extraction.getPnrNumber());
-                    }
+                // ──── STEP 1: Store file locally ─────────────────────────────────
+                String storedPath = fileStorageService.storeTicketContent(companyId, file);
+                log.info("=== Pipeline START: {} ===", filename);
+
+                // ──── STEP 2: Resolve absolute path for Python service ───────────
+                String absolutePath = fileStorageService.resolveAbsolutePath(storedPath);
+                log.info("Resolved absolute path: {}", absolutePath);
+
+                // ──── STEP 3: Call Python extraction service ─────────────────────
+                //  Python renders PDF pages via PyMuPDF → sends to NVIDIA vision
+                //  Returns structured JSON with passenger records
+                @SuppressWarnings("unchecked")
+                Map<String, Object> extractionResponse = 
+                        pythonExtractionClient.extract(absolutePath, companyId);
+
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> records = 
+                        (List<Map<String, Object>>) extractionResponse.get("records");
+
+                String extractionStatus = (String) extractionResponse.get("status");
+                log.info("Python extraction returned status={}, records={}", 
+                        extractionStatus, records != null ? records.size() : 0);
+
+                // Record audit info from Python response
+                auditContext.setModelUsed(str(extractionResponse, "model_used"));
+
+                if (records == null || records.isEmpty()) {
+                    throw new ExtractionException(
+                        "Python extraction returned no records for: " + filename);
                 }
-                
-                ticket.setTicketType(expectedType);
-                ticket.setPassengerName(extraction.getPassengerName() != null ? extraction.getPassengerName() : "Unknown");
-                ticket.setTravelDate(extraction.getTravelDate() != null ? extraction.getTravelDate() : LocalDate.now());
-                ticket.setOrigin(extraction.getOrigin());
-                ticket.setDestination(extraction.getDestination());
-                ticket.setOperatorName(extraction.getOperatorName());
-                ticket.setBaseFare(extraction.getBaseFare() != null ? extraction.getBaseFare() : BigDecimal.ZERO);
-                ticket.setAiConfidence(extraction.getOverallConfidence());
-                
-                // Set financials to zero initially (calculated upon approval)
-                ticket.setServiceCharge(BigDecimal.ZERO);
-                ticket.setCgst(BigDecimal.ZERO);
-                ticket.setSgst(BigDecimal.ZERO);
-                ticket.setTotalAmount(BigDecimal.ZERO);
-                
-                ticket.setStatus(TicketStatus.PENDING_REVIEW);
-                ticket.setCreatedBy(user);
-                
-                Ticket savedTicket = ticketRepository.save(ticket);
-                auditService.logAction("TICKET", savedTicket.getId(), "UPLOADED", null, mapToResponse(savedTicket), user);
-                
-                results.add(mapToResponse(savedTicket));
-                
+
+                // ──── STEP 4: Map each record to Ticket entity ──────────────────
+                List<Ticket> tickets = records.stream()
+                    .map(record -> mapAiRecordToTicket(record, storedPath, company, expectedType, user))
+                    .toList();
+
+                if (tickets.isEmpty()) {
+                    throw new ExtractionException("No tickets extracted from AI response for: " + filename);
+                }
+                log.info("Mapped {} ticket(s) from Python response", tickets.size());
+
+                // ──── STEP 5: Persist all tickets ────────────────────────────────
+                List<Ticket> saved = persistenceService.saveAll(tickets);
+                log.info("Persisted {} ticket(s)", saved.size());
+
+                for (Ticket t : saved) {
+                    auditService.logAction("TICKET", t.getId(), "UPLOADED", null, mapToResponse(t), user);
+                    results.add(mapToResponse(t));
+                }
+
+                // ──── STEP 6: Write audit ────────────────────────────────────────
+                auditContext.setStatus("SUCCESS");
+                auditContext.setProcessingMs(System.currentTimeMillis() - startMs);
+                extractionAuditService.writeAudit(auditContext);
+                log.info("Pipeline complete: {} → {} ticket(s) in {}ms",
+                        filename, saved.size(), System.currentTimeMillis() - startMs);
+
+            } catch (ExtractionException | PdfExtractionException | NvidiaApiException e) {
+                log.warn("Extraction failed for {}: {}", filename, e.getMessage());
+                writeFailedAudit(auditContext, e, startMs);
+
             } catch (Exception e) {
-                log.error("Error processing ticket file: {}", file.getOriginalFilename(), e);
-                // We continue processing other files even if one fails
+                log.error("Unexpected pipeline error for {}: {}", filename, e.getMessage(), e);
+                writeFailedAudit(auditContext, e, startMs);
             }
+        }
+
+        if (results.isEmpty()) {
+            throw new ExtractionException("Upload completed but OCR/AI extraction did not produce any tickets.");
         }
 
         return results;
     }
 
+    /**
+     * Map AI record → Ticket entity.
+     * AI returns: pnr_number, passenger_name, travel_date, operator_name,
+     *             origin, destination, base_fare, total_amount, ticket_type, confidence
+     */
+    private Ticket mapAiRecordToTicket(Map<String, Object> record,
+                                        String filePath,
+                                        Company company,
+                                        TicketType expectedType,
+                                        User user) {
+        Ticket ticket = new Ticket();
+
+        // PNR — trim to 20 chars (DB constraint)
+        String pnr = str(record, "pnr_number");
+        ticket.setPnrNumber(pnr != null ? cap(pnr.toUpperCase().trim(), 20) : null);
+
+        ticket.setPassengerName(str(record, "passenger_name"));
+        ticket.setOrigin(str(record, "origin"));
+        ticket.setDestination(str(record, "destination"));
+        ticket.setOperatorName(str(record, "operator_name"));
+
+        // Ticket type
+        String typeStr = str(record, "ticket_type");
+        TicketType resolvedType = expectedType;
+        if (typeStr != null && !typeStr.isBlank()) {
+            try {
+                resolvedType = TicketType.valueOf(typeStr.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                resolvedType = expectedType != null ? expectedType : TicketType.UNKNOWN;
+            }
+        }
+        ticket.setTicketType(resolvedType != null ? resolvedType : TicketType.UNKNOWN);
+
+        // Travel date — parse yyyy-MM-dd
+        String dateStr = str(record, "travel_date");
+        if (dateStr != null) {
+            try {
+                ticket.setTravelDate(java.time.LocalDate.parse(dateStr));
+            } catch (Exception e) {
+                log.warn("Could not parse travel_date '{}' — setting null", dateStr);
+                ticket.setTravelDate(null);
+            }
+        }
+
+        // Fares
+        ticket.setBaseFare(decimal(record, "base_fare"));
+        ticket.setTotalAmount(decimal(record, "total_amount"));
+        ticket.setAiConfidence(decimal(record, "confidence"));
+
+        // Tax breakdown — not in AI output, defaults to null
+        ticket.setCgst(null);
+        ticket.setSgst(null);
+        ticket.setServiceCharge(null);
+
+        // System fields
+        ticket.setFilePath(filePath);
+        ticket.setCompany(company);
+        ticket.setCreatedBy(user);
+        ticket.setStatus(TicketStatus.PENDING_REVIEW);
+
+        return ticket;
+    }
+
+    /**
+     * Audit writer — called in catch blocks, must never throw.
+     * Delegates to ExtractionAuditService which has REQUIRES_NEW propagation.
+     */
+    private void writeFailedAudit(AuditContext ctx, Exception e, long startMs) {
+        try {
+            ctx.setStatus("FAILED");
+            ctx.setErrorMessage(e.getMessage());
+            ctx.setProcessingMs(System.currentTimeMillis() - startMs);
+            extractionAuditService.writeAudit(ctx);
+        } catch (Exception auditEx) {
+            // Audit failure must never mask the original exception
+            log.error("Failed to write audit record: {}", auditEx.getMessage());
+        }
+    }
+
+    /**
+     * Validate all tickets — returns warnings, never throws.
+     */
+    private List<String> validateAll(List<Ticket> tickets) {
+        List<String> warnings = new ArrayList<>();
+        for (Ticket ticket : tickets) {
+            TicketValidationService.ValidationReport report = validationService.validate(ticket);
+            if (!report.errors().isEmpty()) {
+                log.warn("Ticket {} has validation errors: {}", ticket.getPnrNumber(), report.errors());
+                warnings.addAll(report.errors());
+            }
+            if (!report.warnings().isEmpty()) {
+                warnings.addAll(report.warnings());
+            }
+        }
+        return warnings;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  UNIFIED EXTRACTION CONSOLIDATION
+    //  Removed old methods: processGroupBooking, processSingleBooking,
+    //  parseSingleResult, buildTicketFromExtraction, resolvePerPassengerFare,
+    //  safePnr, ensureUniquePnr, safeDate, validateAll
+    //  (replaced by simplified one-call pipeline in processTicketUploads with mapAiRecordToTicket)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  UPDATE & APPROVE
+    // ═════════════════════════════════════════════════════════════════════════
+
     @Transactional
     public TicketDto.TicketResponse updateAndApproveTicket(Long id, TicketDto.UpdateTicketRequest request, User user) {
         Ticket ticket = getTicketEntity(id);
-        
+
         if (ticket.getStatus() == TicketStatus.BILLED || ticket.getStatus() == TicketStatus.PAID) {
             throw new BusinessException("Cannot modify a billed ticket", "TICKET_LOCKED", HttpStatus.FORBIDDEN);
         }
 
         // Check PNR uniqueness if changed
-        if (!ticket.getPnrNumber().equals(request.getPnrNumber()) && 
-            ticketRepository.existsByPnrNumber(request.getPnrNumber())) {
+        if (!ticket.getPnrNumber().equals(request.getPnrNumber()) &&
+                ticketRepository.existsByPnrNumber(request.getPnrNumber())) {
             throw new BusinessException("PNR already exists", "DUPLICATE_PNR", HttpStatus.CONFLICT);
         }
 
@@ -158,61 +321,93 @@ public class TicketService {
         ticket.setDestination(request.getDestination());
         ticket.setOperatorName(request.getOperatorName());
         ticket.setBaseFare(request.getBaseFare());
-        
-        // Calculate Financials according to Architecture Doc rules
+
+        // Calculate Financials
         Company company = ticket.getCompany();
         GstConfig gstConfig = gstConfigRepository.findActiveConfigForDate(ticket.getTravelDate())
-                .orElseThrow(() -> new BusinessException("No active GST config found for travel date", "MISSING_GST_CONFIG", HttpStatus.INTERNAL_SERVER_ERROR));
-        
-        // 1. Service Charge = Base Fare × company.serviceChargePct
+                .orElseThrow(() -> new BusinessException("No active GST config found for travel date",
+                        "MISSING_GST_CONFIG", HttpStatus.INTERNAL_SERVER_ERROR));
+
         BigDecimal serviceCharge = request.getBaseFare()
                 .multiply(company.getServiceChargePct().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP))
                 .setScale(2, RoundingMode.HALF_UP);
         ticket.setServiceCharge(serviceCharge);
-        
-        // 2. CGST = Service Charge × gstConfig.cgstRate
+
         BigDecimal cgst = serviceCharge
                 .multiply(gstConfig.getCgstRate().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP))
                 .setScale(2, RoundingMode.HALF_UP);
         ticket.setCgst(cgst);
-        
-        // 3. SGST = Service Charge × gstConfig.sgstRate
+
         BigDecimal sgst = serviceCharge
                 .multiply(gstConfig.getSgstRate().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP))
                 .setScale(2, RoundingMode.HALF_UP);
         ticket.setSgst(sgst);
-        
-        // 4. Total = Base Fare + Service Charge + CGST + SGST
+
         BigDecimal total = request.getBaseFare().add(serviceCharge).add(cgst).add(sgst);
         ticket.setTotalAmount(total);
 
         ticket.setStatus(TicketStatus.APPROVED);
-        
+
         Ticket savedTicket = ticketRepository.save(ticket);
         TicketDto.TicketResponse newValue = mapToResponse(savedTicket);
-        
+
         auditService.logAction("TICKET", savedTicket.getId(), "APPROVED", oldValue, newValue, user);
-        
+
         return newValue;
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  DELETE
+    // ═════════════════════════════════════════════════════════════════════════
 
     @Transactional
     public void deleteTicket(Long id, User user) {
         Ticket ticket = getTicketEntity(id);
-        
+
         if (ticket.getStatus() == TicketStatus.BILLED || ticket.getStatus() == TicketStatus.PAID) {
             throw new BusinessException("Cannot delete a billed ticket", "TICKET_LOCKED", HttpStatus.FORBIDDEN);
         }
-        
+
         auditService.logAction("TICKET", ticket.getId(), "DELETED", mapToResponse(ticket), null, user);
-        
-        // Delete physical file
+
         if (ticket.getFilePath() != null) {
             fileStorageService.deleteFile(ticket.getFilePath());
         }
-        
+
         ticketRepository.delete(ticket);
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  HELPERS
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private String coalesce(String value, String fallback) {
+        return value != null && !value.isBlank() ? value : fallback;
+    }
+
+    private String str(Map<String, Object> m, String key) {
+        Object v = m.get(key);
+        return v != null ? v.toString() : null;
+    }
+
+    private String cap(String s, int max) {
+        return s == null ? null : s.length() <= max ? s : s.substring(0, max);
+    }
+
+    private BigDecimal decimal(Map<String, Object> m, String key) {
+        Object v = m.get(key);
+        if (v == null) return null;
+        try {
+            return new BigDecimal(v.toString().replace(",", ""))
+                    .setScale(2, RoundingMode.HALF_UP);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  MAPPER
+    // ═════════════════════════════════════════════════════════════════════════
 
     private TicketDto.TicketResponse mapToResponse(Ticket ticket) {
         TicketDto.TicketResponse response = new TicketDto.TicketResponse();

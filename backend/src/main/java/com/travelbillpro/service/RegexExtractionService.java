@@ -16,7 +16,7 @@ public class RegexExtractionService {
     // Common patterns found in travel tickets
     private static final Pattern PNR_PATTERN = Pattern.compile("(?i)(pnr(?:\\s*no(?:umber)?|\\s*#)?[\\s:]*)([A-Z0-9]{6,8})");
     private static final Pattern DATE_PATTERN = Pattern.compile("(?i)(?:date|travel\\s*date|departure)[\\s:]*(\\d{1,2}[-/\\s][A-Za-z]{3,8}[-/\\s]?\\d{2,4}|\\d{1,2}[-/]\\d{1,2}[-/]\\d{2,4})");
-    private static final Pattern FARE_PATTERN = Pattern.compile("(?i)(?:total|amount|fare|price)(?:\\s*paid|\\s*inr|\\s*rs)?(?:[\\s:.]+)*[₹]?\\s*(\\d{1,6}(?:[.,]\\d{2})?)");
+    private static final Pattern FARE_PATTERN = Pattern.compile("(?i)(?:total|amount|fare|price|net\\s*payable|grand\\s*total|base\\s*fare)(?:\\s*paid|\\s*inr|\\s*rs)?(?:[\\s:.]+)*[₹]?\\s*(\\d{1,6}(?:[.,]\\d{2})?)");
     
     public TicketExtractionResult fallbackExtraction(String rawText, TicketType expectedType) {
         TicketExtractionResult result = new TicketExtractionResult();

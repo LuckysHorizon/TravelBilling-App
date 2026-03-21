@@ -58,6 +58,9 @@ public class Company {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "pdf_storage_path", columnDefinition = "TEXT")
+    private String pdfStoragePath;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

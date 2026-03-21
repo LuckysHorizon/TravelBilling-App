@@ -63,7 +63,8 @@ const TicketReview = () => {
   }, [ticket, form]);
 
   const ConfidenceIndicator = ({ score }: { score: number }) => {
-    const percent = Math.round((score || 0) * 100);
+    // If score is > 1, assume it's already a percentage (0-100). If <= 1, multiply by 100.
+    const percent = Math.round(score > 1 ? score : (score || 0) * 100);
     let color = '#10b981';
     if (percent < 60) color = '#ef4444';
     else if (percent < 85) color = '#f59e0b';

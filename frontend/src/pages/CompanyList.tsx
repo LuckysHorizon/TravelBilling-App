@@ -179,6 +179,9 @@ const CompanyList = () => {
                 { value: 'WEEKLY', label: 'Weekly' },
               ]} />
             </Form.Item>
+            <Form.Item name="pdfStoragePath" label="Custom PDF Storage Path" className="col-span-2" tooltip="Absolute path on the server where PDFs will be stored for this organization. Leave blank to use default system storage.">
+              <Input placeholder="e.g. C:\travelbill\pdfs\company1" />
+            </Form.Item>
             <Form.Item name="address" label="Address" className="col-span-2">
               <Input.TextArea rows={2} />
             </Form.Item>

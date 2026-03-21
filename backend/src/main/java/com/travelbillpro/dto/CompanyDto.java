@@ -37,6 +37,8 @@ public class CompanyDto {
         private BillingCycle billingCycle;
 
         private BigDecimal creditLimit;
+        
+        private String pdfStoragePath;
     }
 
     @Data
@@ -55,6 +57,7 @@ public class CompanyDto {
         private BillingCycle billingCycle;
         private BigDecimal creditLimit;
         private Boolean active; // frontend uses 'active' not 'isActive'
+        private String pdfStoragePath;
         private LocalDateTime createdAt;
         private Long createdById;
     }

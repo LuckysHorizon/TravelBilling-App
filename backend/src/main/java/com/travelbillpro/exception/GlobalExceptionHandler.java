@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -22,6 +23,35 @@ public class GlobalExceptionHandler {
         log.warn("Business exception: {} [{}]", ex.getMessage(), ex.getErrorCode());
         ErrorResponse error = new ErrorResponse(ex.getErrorCode(), ex.getMessage(), LocalDateTime.now());
         return new ResponseEntity<>(error, ex.getHttpStatus());
+    }
+
+    @ExceptionHandler(ExtractionException.class)
+    public ResponseEntity<ErrorResponse> handleExtractionException(ExtractionException ex) {
+        log.warn("Extraction exception: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse("EXTRACTION_FAILED", ex.getMessage(), LocalDateTime.now());
+        return new ResponseEntity<>(error, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    @ExceptionHandler(PdfExtractionException.class)
+    public ResponseEntity<ErrorResponse> handlePdfExtractionException(PdfExtractionException ex) {
+        log.warn("PDF extraction exception: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse("PDF_EXTRACTION_FAILED", ex.getMessage(), LocalDateTime.now());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(NvidiaApiException.class)
+    public ResponseEntity<ErrorResponse> handleNvidiaApiException(NvidiaApiException ex) {
+        log.error("NVIDIA NIM API error: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse("AI_SERVICE_ERROR", "NVIDIA NIM error: " + ex.getMessage(), LocalDateTime.now());
+        return new ResponseEntity<>(error, HttpStatus.BAD_GATEWAY);  // 502 for upstream service failure
+    }
+
+    @ExceptionHandler(UnexpectedRollbackException.class)
+    public ResponseEntity<ErrorResponse> handleUnexpectedRollback(UnexpectedRollbackException ex) {
+        log.error("TRANSACTION ROLLBACK (this indicates a @Transactional boundary bug): {}", ex.getMessage(), ex);
+        ErrorResponse error = new ErrorResponse("TRANSACTION_ERROR",
+            "Database transaction failed — check server logs for root cause", LocalDateTime.now());
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -53,4 +83,3 @@ public class GlobalExceptionHandler {
 
     public record ErrorResponse(String errorCode, String message, LocalDateTime timestamp) {}
 }
-

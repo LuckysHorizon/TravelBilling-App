@@ -121,6 +121,9 @@ const CompanyDetail = () => {
           </Descriptions.Item>
           <Descriptions.Item label="Billing Cycle">{company.billingCycle?.replace('_', ' ') || '—'}</Descriptions.Item>
           <Descriptions.Item label="Service Charge %">{company.serviceChargePct}%</Descriptions.Item>
+          <Descriptions.Item label="PDF Storage Path" span={3}>
+            {company.pdfStoragePath ? <span className="font-mono text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border">{company.pdfStoragePath}</span> : <span className="text-gray-400 italic">Default System Storage</span>}
+          </Descriptions.Item>
         </Descriptions>
       </Card>
     </div>
@@ -240,6 +243,9 @@ const CompanyDetail = () => {
                 { value: 'BIWEEKLY', label: 'Bi-Weekly' },
                 { value: 'WEEKLY', label: 'Weekly' },
               ]} />
+            </Form.Item>
+            <Form.Item name="pdfStoragePath" label="Custom PDF Storage Path" className="col-span-2" tooltip="Absolute path on the server where PDFs will be stored for this organization. Leave blank to use default system storage.">
+              <Input placeholder="e.g. C:\travelbill\pdfs\company1" />
             </Form.Item>
             <Form.Item name="address" label="Address" className="col-span-2">
               <Input.TextArea rows={2} />

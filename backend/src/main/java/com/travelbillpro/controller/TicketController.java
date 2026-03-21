@@ -52,7 +52,7 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('ADMIN', 'BILLING_STAFF')")
     public ResponseEntity<List<TicketDto.TicketResponse>> uploadTickets(
             @RequestParam("companyId") Long companyId,
-            @RequestParam("ticketType") TicketType expectedType,
+            @RequestParam(value = "ticketType", required = false, defaultValue = "UNKNOWN") TicketType expectedType,
             @RequestParam("files") List<MultipartFile> files,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return new ResponseEntity<>(

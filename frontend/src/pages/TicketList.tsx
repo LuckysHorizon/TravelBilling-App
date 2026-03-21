@@ -69,7 +69,7 @@ const TicketList = () => {
           type="link" 
           onClick={() => {
             if (record.status === 'PENDING_REVIEW') {
-              navigate(`/tickets/review/${record.batchId}`);
+              navigate(`/tickets/review/${record.id}`);
             } else {
               // open detail modal or page
             }

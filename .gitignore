@@ -1,0 +1,50 @@
+# ── Python ────────────────────────────────────────────
+pdf-extractor/venv/
+pdf-extractor/__pycache__/
+pdf-extractor/*.pyc
+pdf-extractor/.env
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ── Java / Maven ──────────────────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/data/
+backend/compile_log.txt
+backend/check_compile.bat
+backend/tessdata/
+backend/test_*.ps1
+backend/test_output.txt
+*.class
+*.jar
+*.war
+
+# ── IDE ───────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+.factorypath
+
+# ── OS ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ──────────────────────────────────────────────
+backend/logs/
+*.log
+
+# ── Environment / Secrets ─────────────────────────────
+.env
+*.env.local
+
+# ── Node (frontend) ──────────────────────────────────
+frontend/node_modules/
+frontend/dist/

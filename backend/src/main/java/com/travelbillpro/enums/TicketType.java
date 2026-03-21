@@ -2,5 +2,7 @@ package com.travelbillpro.enums;
 
 public enum TicketType {
     FLIGHT,
-    BUS
+    BUS,
+    TRAIN,
+    UNKNOWN
 }

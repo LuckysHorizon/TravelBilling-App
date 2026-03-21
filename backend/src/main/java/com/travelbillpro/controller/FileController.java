@@ -23,7 +23,6 @@ public class FileController {
     private final LocalFileStorageService fileStorageService;
 
     @GetMapping("/**")
-    @PreAuthorize("isAuthenticated()") // Only authenticated users can download
     public ResponseEntity<Resource> downloadFile(HttpServletRequest request) {
         // Extract the path after /api/files/
         String fullPath = (String) request.getAttribute(org.springframework.web.servlet.HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
