@@ -18,6 +18,7 @@ import Reports from './pages/Reports';
 import UserManagement from './pages/UserManagement';
 import SystemSettings from './pages/SystemSettings';
 import AuditLogs from './pages/AuditLogs';
+import BillingPanels from './pages/BillingPanels';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
@@ -42,6 +43,7 @@ function App() {
             <Route path="/companies" element={<CompanyList />} />
             <Route path="/companies/:id" element={<CompanyDetail />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/billing-panels" element={<BillingPanels />} />
 
             {/* Roles: ADMIN, BILLING_STAFF */}
             <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'BILLING_STAFF']} />}>

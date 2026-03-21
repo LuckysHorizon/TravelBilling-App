@@ -233,23 +233,23 @@ public class InvoiceGeneratorService {
                 tRow.createCell(6).setCellValue(t.getOperatorName());
                 
                 org.apache.poi.ss.usermodel.Cell fareCell = tRow.createCell(7);
-                fareCell.setCellValue(t.getBaseFare().doubleValue());
+                fareCell.setCellValue(t.getBaseFare() != null ? t.getBaseFare().doubleValue() : 0);
                 fareCell.setCellStyle(currencyStyle);
                 
                 org.apache.poi.ss.usermodel.Cell scCell = tRow.createCell(8);
-                scCell.setCellValue(t.getServiceCharge().doubleValue());
+                scCell.setCellValue(t.getServiceCharge() != null ? t.getServiceCharge().doubleValue() : 0);
                 scCell.setCellStyle(currencyStyle);
                 
                 org.apache.poi.ss.usermodel.Cell cgstCell = tRow.createCell(9);
-                cgstCell.setCellValue(t.getCgst().doubleValue());
+                cgstCell.setCellValue(t.getCgst() != null ? t.getCgst().doubleValue() : 0);
                 cgstCell.setCellStyle(currencyStyle);
                 
                 org.apache.poi.ss.usermodel.Cell sgstCell = tRow.createCell(10);
-                sgstCell.setCellValue(t.getSgst().doubleValue());
+                sgstCell.setCellValue(t.getSgst() != null ? t.getSgst().doubleValue() : 0);
                 sgstCell.setCellStyle(currencyStyle);
                 
                 org.apache.poi.ss.usermodel.Cell totCell = tRow.createCell(11);
-                totCell.setCellValue(t.getTotalAmount().doubleValue());
+                totCell.setCellValue(t.getTotalAmount() != null ? t.getTotalAmount().doubleValue() : 0);
                 totCell.setCellStyle(currencyStyle);
             }
             
@@ -259,31 +259,31 @@ public class InvoiceGeneratorService {
             Row sumRow1 = sheet.createRow(rowNum++);
             sumRow1.createCell(10).setCellValue("Total Base Fare:");
             org.apache.poi.ss.usermodel.Cell sumCell1 = sumRow1.createCell(11);
-            sumCell1.setCellValue(invoice.getSubtotal().doubleValue());
+            sumCell1.setCellValue(invoice.getSubtotal() != null ? invoice.getSubtotal().doubleValue() : 0);
             sumCell1.setCellStyle(currencyStyle);
             
             Row sumRow2 = sheet.createRow(rowNum++);
             sumRow2.createCell(10).setCellValue("Total Service Charge:");
             org.apache.poi.ss.usermodel.Cell sumCell2 = sumRow2.createCell(11);
-            sumCell2.setCellValue(invoice.getServiceCharge().doubleValue());
+            sumCell2.setCellValue(invoice.getServiceCharge() != null ? invoice.getServiceCharge().doubleValue() : 0);
             sumCell2.setCellStyle(currencyStyle);
             
             Row sumRow4 = sheet.createRow(rowNum++);
             sumRow4.createCell(10).setCellValue("Total CGST:");
             org.apache.poi.ss.usermodel.Cell sumCell4 = sumRow4.createCell(11);
-            sumCell4.setCellValue(invoice.getCgstTotal().doubleValue());
+            sumCell4.setCellValue(invoice.getCgstTotal() != null ? invoice.getCgstTotal().doubleValue() : 0);
             sumCell4.setCellStyle(currencyStyle);
             
             Row sumRow5 = sheet.createRow(rowNum++);
             sumRow5.createCell(10).setCellValue("Total SGST:");
             org.apache.poi.ss.usermodel.Cell sumCell5 = sumRow5.createCell(11);
-            sumCell5.setCellValue(invoice.getSgstTotal().doubleValue());
+            sumCell5.setCellValue(invoice.getSgstTotal() != null ? invoice.getSgstTotal().doubleValue() : 0);
             sumCell5.setCellStyle(currencyStyle);
             
             Row sumRow6 = sheet.createRow(rowNum++);
             sumRow6.createCell(10).setCellValue("Grand Total:");
             org.apache.poi.ss.usermodel.Cell sumCell6 = sumRow6.createCell(11);
-            sumCell6.setCellValue(invoice.getGrandTotal().doubleValue());
+            sumCell6.setCellValue(invoice.getGrandTotal() != null ? invoice.getGrandTotal().doubleValue() : 0);
             CellStyle grandTotalStyle = workbook.createCellStyle();
             grandTotalStyle.cloneStyleFrom(currencyStyle);
             Font gtFont = workbook.createFont();

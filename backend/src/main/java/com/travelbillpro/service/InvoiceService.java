@@ -83,11 +83,11 @@ public class InvoiceService {
         BigDecimal grandTotal = BigDecimal.ZERO;
 
         for (Ticket ticket : unbilledTickets) {
-            totalBaseFare = totalBaseFare.add(ticket.getBaseFare());
-            totalServiceCharge = totalServiceCharge.add(ticket.getServiceCharge());
-            totalCgst = totalCgst.add(ticket.getCgst());
-            totalSgst = totalSgst.add(ticket.getSgst());
-            grandTotal = grandTotal.add(ticket.getTotalAmount());
+            totalBaseFare = totalBaseFare.add(ticket.getBaseFare() != null ? ticket.getBaseFare() : BigDecimal.ZERO);
+            totalServiceCharge = totalServiceCharge.add(ticket.getServiceCharge() != null ? ticket.getServiceCharge() : BigDecimal.ZERO);
+            totalCgst = totalCgst.add(ticket.getCgst() != null ? ticket.getCgst() : BigDecimal.ZERO);
+            totalSgst = totalSgst.add(ticket.getSgst() != null ? ticket.getSgst() : BigDecimal.ZERO);
+            grandTotal = grandTotal.add(ticket.getTotalAmount() != null ? ticket.getTotalAmount() : BigDecimal.ZERO);
         }
 
         // Generate sequential invoice number

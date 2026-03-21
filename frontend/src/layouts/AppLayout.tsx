@@ -68,6 +68,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         label: 'Invoices',
       },
       {
+        key: '/billing-panels',
+        icon: <ClipboardList size={18} />,
+        label: 'Billing Panels',
+      },
+      {
         key: '/reports',
         icon: <BarChart3 size={18} />,
         label: 'Reports',
@@ -98,6 +103,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     if (path.startsWith('/tickets')) return ['/tickets'];
     if (path.startsWith('/companies')) return ['/companies'];
     if (path.startsWith('/invoices')) return ['/invoices'];
+    if (path.startsWith('/billing-panels')) return ['/billing-panels'];
     if (path.startsWith('/settings/users')) return ['/settings/users'];
     if (path.startsWith('/settings')) return ['/settings'];
     if (path.startsWith('/reports')) return ['/reports'];

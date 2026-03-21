@@ -232,15 +232,16 @@ public class TicketService {
             }
         }
 
-        // Fares
-        ticket.setBaseFare(decimal(record, "base_fare"));
-        ticket.setTotalAmount(decimal(record, "total_amount"));
+        // Fares — no service tax, grand total = base fare
+        BigDecimal baseFare = decimal(record, "base_fare");
+        ticket.setBaseFare(baseFare);
+        ticket.setTotalAmount(baseFare); // total = base (no tax)
         ticket.setAiConfidence(decimal(record, "confidence"));
 
-        // Tax breakdown — not in AI output, defaults to null
-        ticket.setCgst(null);
-        ticket.setSgst(null);
-        ticket.setServiceCharge(null);
+        // No service tax
+        ticket.setServiceCharge(BigDecimal.ZERO);
+        ticket.setCgst(BigDecimal.ZERO);
+        ticket.setSgst(BigDecimal.ZERO);
 
         // System fields
         ticket.setFilePath(filePath);
@@ -322,29 +323,11 @@ public class TicketService {
         ticket.setOperatorName(request.getOperatorName());
         ticket.setBaseFare(request.getBaseFare());
 
-        // Calculate Financials
-        Company company = ticket.getCompany();
-        GstConfig gstConfig = gstConfigRepository.findActiveConfigForDate(ticket.getTravelDate())
-                .orElseThrow(() -> new BusinessException("No active GST config found for travel date",
-                        "MISSING_GST_CONFIG", HttpStatus.INTERNAL_SERVER_ERROR));
-
-        BigDecimal serviceCharge = request.getBaseFare()
-                .multiply(company.getServiceChargePct().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP))
-                .setScale(2, RoundingMode.HALF_UP);
-        ticket.setServiceCharge(serviceCharge);
-
-        BigDecimal cgst = serviceCharge
-                .multiply(gstConfig.getCgstRate().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP))
-                .setScale(2, RoundingMode.HALF_UP);
-        ticket.setCgst(cgst);
-
-        BigDecimal sgst = serviceCharge
-                .multiply(gstConfig.getSgstRate().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP))
-                .setScale(2, RoundingMode.HALF_UP);
-        ticket.setSgst(sgst);
-
-        BigDecimal total = request.getBaseFare().add(serviceCharge).add(cgst).add(sgst);
-        ticket.setTotalAmount(total);
+        // No service tax — grand total = base fare
+        ticket.setServiceCharge(BigDecimal.ZERO);
+        ticket.setCgst(BigDecimal.ZERO);
+        ticket.setSgst(BigDecimal.ZERO);
+        ticket.setTotalAmount(request.getBaseFare());
 
         ticket.setStatus(TicketStatus.APPROVED);
 
@@ -375,6 +358,20 @@ public class TicketService {
         }
 
         ticketRepository.delete(ticket);
+    }
+
+    @Transactional
+    public int deleteTicketsBatch(List<Long> ids, User user) {
+        int deleted = 0;
+        for (Long id : ids) {
+            try {
+                deleteTicket(id, user);
+                deleted++;
+            } catch (BusinessException e) {
+                log.warn("Skipped deletion of ticket {}: {}", id, e.getMessage());
+            }
+        }
+        return deleted;
     }
 
     // ═════════════════════════════════════════════════════════════════════════

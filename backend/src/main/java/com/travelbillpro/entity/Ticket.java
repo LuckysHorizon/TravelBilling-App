@@ -76,6 +76,10 @@ public class Ticket {
     private Invoice invoice;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "billing_panel_id")
+    private BillingPanel billingPanel;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
 

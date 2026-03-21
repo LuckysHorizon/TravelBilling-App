@@ -41,6 +41,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     List<Ticket> findByInvoiceId(Long invoiceId);
 
+    List<Ticket> findByBillingPanelId(Long billingPanelId);
+
     default List<Ticket> findTicketsByInvoiceId(Long invoiceId) {
         return findByInvoiceId(invoiceId);
     }

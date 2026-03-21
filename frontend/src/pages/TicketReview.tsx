@@ -102,7 +102,7 @@ const TicketReview = () => {
         <Card className="flex-1 overflow-hidden flex flex-col" styles={{ body: { height: '100%', padding: 0 } }}>
           {ticket.filePath ? (
             <iframe
-              src={`http://localhost:8080/api/files/${ticket.filePath}`}
+              src={`http://localhost:8080/api/tickets/${ticket.id}/file`}
               className="w-full h-full"
               title="Document Preview"
             />

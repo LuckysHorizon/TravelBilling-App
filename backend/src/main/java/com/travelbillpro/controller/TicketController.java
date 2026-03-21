@@ -4,11 +4,14 @@ import com.travelbillpro.dto.TicketDto;
 import com.travelbillpro.enums.TicketStatus;
 import com.travelbillpro.enums.TicketType;
 import com.travelbillpro.security.CustomUserDetails;
+import com.travelbillpro.service.LocalFileStorageService;
 import com.travelbillpro.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +28,7 @@ import java.util.List;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final LocalFileStorageService fileStorageService;
 
     @GetMapping
     public ResponseEntity<Page<TicketDto.TicketResponse>> getAllTickets(Pageable pageable) {
@@ -77,5 +81,37 @@ public class TicketController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         ticketService.deleteTicket(id, userDetails.getUser());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/batch-delete")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BILLING_STAFF')")
+    public ResponseEntity<java.util.Map<String, Object>> batchDelete(
+            @RequestBody java.util.Map<String, java.util.List<Long>> body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        java.util.List<Long> ids = body.get("ids");
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "No ticket IDs provided"));
+        }
+        int deleted = ticketService.deleteTicketsBatch(ids, userDetails.getUser());
+        return ResponseEntity.ok(java.util.Map.of("deleted", deleted, "total", ids.size()));
+    }
+
+    /**
+     * Serves the PDF file associated with a ticket.
+     * Uses ticket ID instead of file path to avoid absolute path encoding issues in URLs.
+     */
+    @GetMapping("/{id}/file")
+    public ResponseEntity<Resource> getTicketFile(@PathVariable Long id) {
+        TicketDto.TicketResponse ticket = ticketService.getTicketById(id);
+        if (ticket.getFilePath() == null || ticket.getFilePath().isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        Resource resource = fileStorageService.loadFileAsResource(ticket.getFilePath());
+        
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 }
