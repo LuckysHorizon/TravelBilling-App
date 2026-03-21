@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -50,7 +49,7 @@ public class TicketParserService {
     }
 
     private String extractTextFromPdf(File file) throws IOException {
-        try (PDDocument document = Loader.loadPDF(file)) {
+        try (PDDocument document = PDDocument.load(file)) {
             // First try digital text extraction (fast and accurate)
             PDFTextStripper textStripper = new PDFTextStripper();
             String text = textStripper.getText(document);

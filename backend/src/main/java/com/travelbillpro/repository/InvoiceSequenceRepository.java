@@ -15,4 +15,8 @@ public interface InvoiceSequenceRepository extends JpaRepository<InvoiceSequence
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM InvoiceSequence s WHERE s.financialYear = :financialYear")
     Optional<InvoiceSequence> findByFinancialYearWithLock(String financialYear);
+
+    default Optional<InvoiceSequence> findByFinancialYear(String financialYear) {
+        return findByFinancialYearWithLock(financialYear);
+    }
 }

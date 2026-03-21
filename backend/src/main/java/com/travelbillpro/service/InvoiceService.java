@@ -1,6 +1,7 @@
 package com.travelbillpro.service;
 
 import com.travelbillpro.dto.InvoiceDto;
+import com.travelbillpro.dto.TicketDto;
 import com.travelbillpro.entity.Company;
 import com.travelbillpro.entity.Invoice;
 import com.travelbillpro.entity.InvoiceSequence;
@@ -101,10 +102,11 @@ public class InvoiceService {
         invoice.setDueDate(LocalDate.now().plusDays(company.getBillingCycle() == com.travelbillpro.enums.BillingCycle.MONTHLY ? 15 : 7)); // Simple due date logic
         invoice.setBillingPeriodStart(request.getStartDate());
         invoice.setBillingPeriodEnd(request.getEndDate());
-        invoice.setTotalBaseFare(totalBaseFare);
-        invoice.setTotalServiceCharge(totalServiceCharge);
-        invoice.setTotalCgst(totalCgst);
-        invoice.setTotalSgst(totalSgst);
+        invoice.setBillingMonth(request.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")));
+        invoice.setSubtotal(totalBaseFare);
+        invoice.setServiceCharge(totalServiceCharge);
+        invoice.setCgstTotal(totalCgst);
+        invoice.setSgstTotal(totalSgst);
         invoice.setGrandTotal(grandTotal);
         invoice.setStatus(InvoiceStatus.DRAFT); // DRAFT until file is generated
         invoice.setCreatedBy(user);
@@ -123,7 +125,7 @@ public class InvoiceService {
         // Generate physical physical PDF
         byte[] pdfBytes = invoiceGeneratorService.generatePdf(savedInvoice, unbilledTickets);
         String filePath = fileStorageService.storeInvoiceFile(company.getId(), invoiceNumber, pdfBytes, "pdf");
-        savedInvoice.setFilePath(filePath);
+        savedInvoice.setPdfFilePath(filePath);
         savedInvoice.setStatus(InvoiceStatus.GENERATED);
         invoiceRepository.save(savedInvoice);
 
@@ -211,19 +213,50 @@ public class InvoiceService {
         response.setDueDate(invoice.getDueDate());
         response.setBillingPeriodStart(invoice.getBillingPeriodStart());
         response.setBillingPeriodEnd(invoice.getBillingPeriodEnd());
-        response.setTotalBaseFare(invoice.getTotalBaseFare());
-        response.setTotalServiceCharge(invoice.getTotalServiceCharge());
-        response.setTotalCgst(invoice.getTotalCgst());
-        response.setTotalSgst(invoice.getTotalSgst());
+        response.setSubtotal(invoice.getSubtotal());
+        response.setServiceCharge(invoice.getServiceCharge());
+        response.setCgstTotal(invoice.getCgstTotal());
+        response.setSgstTotal(invoice.getSgstTotal());
         response.setGrandTotal(invoice.getGrandTotal());
         response.setStatus(invoice.getStatus());
-        response.setFilePath(invoice.getFilePath());
+        response.setPdfFilePath(invoice.getPdfFilePath());
+        
+        if (invoice.getTickets() != null) {
+            response.setTickets(invoice.getTickets().stream()
+                .map(this::mapToTicketResponse)
+                .collect(java.util.stream.Collectors.toList()));
+        }
         response.setCreatedAt(invoice.getCreatedAt());
         response.setCreatedById(invoice.getCreatedBy() != null ? invoice.getCreatedBy().getId() : null);
         
         // Count tickets if lazy loaded (careful with N+1 queries in a real high-scale app)
         response.setTicketCount(invoice.getTickets() != null ? invoice.getTickets().size() : 0);
         
+        return response;
+    }
+    private TicketDto.TicketResponse mapToTicketResponse(Ticket ticket) {
+        TicketDto.TicketResponse response = new TicketDto.TicketResponse();
+        response.setId(ticket.getId());
+        response.setCompanyId(ticket.getCompany().getId());
+        response.setCompanyName(ticket.getCompany().getName());
+        response.setPnrNumber(ticket.getPnrNumber());
+        response.setTicketType(ticket.getTicketType());
+        response.setPassengerName(ticket.getPassengerName());
+        response.setTravelDate(ticket.getTravelDate());
+        response.setOrigin(ticket.getOrigin());
+        response.setDestination(ticket.getDestination());
+        response.setOperatorName(ticket.getOperatorName());
+        response.setBaseFare(ticket.getBaseFare());
+        response.setServiceCharge(ticket.getServiceCharge());
+        response.setCgst(ticket.getCgst());
+        response.setSgst(ticket.getSgst());
+        response.setTotalAmount(ticket.getTotalAmount());
+        response.setStatus(ticket.getStatus());
+        response.setFilePath(ticket.getFilePath());
+        response.setAiConfidence(ticket.getAiConfidence());
+        response.setInvoiceId(ticket.getInvoice() != null ? ticket.getInvoice().getId() : null);
+        response.setCreatedAt(ticket.getCreatedAt());
+        response.setCreatedById(ticket.getCreatedBy() != null ? ticket.getCreatedBy().getId() : null);
         return response;
     }
 }

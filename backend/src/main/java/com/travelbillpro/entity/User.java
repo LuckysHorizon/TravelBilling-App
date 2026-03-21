@@ -1,5 +1,6 @@
 package com.travelbillpro.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.travelbillpro.enums.Role;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -23,6 +24,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 

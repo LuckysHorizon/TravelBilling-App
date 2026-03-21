@@ -17,6 +17,6 @@ public class InvoiceSequence {
     @Column(name = "financial_year", length = 7)
     private String financialYear;
 
-    @Column(name = "next_number")
-    private Integer nextNumber = 1;
+    @Column(name = "next_value")
+    private Long nextValue = 1L;
 }

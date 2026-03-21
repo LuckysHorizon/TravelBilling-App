@@ -7,6 +7,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class InvoiceDto {
 
@@ -32,14 +33,15 @@ public class InvoiceDto {
         private LocalDate dueDate;
         private LocalDate billingPeriodStart;
         private LocalDate billingPeriodEnd;
-        private BigDecimal totalBaseFare;
-        private BigDecimal totalServiceCharge;
-        private BigDecimal totalCgst;
-        private BigDecimal totalSgst;
+        private BigDecimal subtotal;
+        private BigDecimal serviceCharge;
+        private BigDecimal cgstTotal;
+        private BigDecimal sgstTotal;
         private BigDecimal grandTotal;
         private InvoiceStatus status;
-        private String filePath;
+        private String pdfFilePath;
         private Integer ticketCount;
+        private List<TicketDto.TicketResponse> tickets;
         private LocalDateTime createdAt;
         private Long createdById;
     }

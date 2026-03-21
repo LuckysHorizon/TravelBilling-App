@@ -67,8 +67,8 @@ public class EmailService {
             helper.setText(body);
 
             // Attach PDF invoice
-            if (invoice.getFilePath() != null) {
-                Resource pdfResource = fileStorageService.loadFileAsResource(invoice.getFilePath());
+            if (invoice.getPdfFilePath() != null) {
+                Resource pdfResource = fileStorageService.loadFileAsResource(invoice.getPdfFilePath());
                 helper.addAttachment(invoice.getInvoiceNumber() + ".pdf", pdfResource.getFile());
             }
 

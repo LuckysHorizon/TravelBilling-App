@@ -11,6 +11,6 @@ import java.util.Optional;
 @Repository
 public interface GstConfigRepository extends JpaRepository<GstConfig, Long> {
     
-    @Query("SELECT g FROM GstConfig g WHERE g.effectiveFrom <= :date ORDER BY g.effectiveFrom DESC LIMIT 1")
+    @Query(value = "SELECT * FROM gst_config g WHERE g.effective_from <= :date ORDER BY g.effective_from DESC LIMIT 1", nativeQuery = true)
     Optional<GstConfig> findActiveConfigForDate(LocalDate date);
 }

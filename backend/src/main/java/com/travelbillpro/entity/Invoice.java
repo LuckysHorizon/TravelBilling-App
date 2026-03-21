@@ -6,7 +6,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "invoices")
@@ -27,6 +29,18 @@ public class Invoice {
 
     @Column(name = "billing_month", nullable = false, length = 7)
     private String billingMonth;
+
+    @Column(name = "invoice_date", nullable = false)
+    private LocalDate invoiceDate;
+
+    @Column(name = "billing_period_start", nullable = false)
+    private LocalDate billingPeriodStart;
+
+    @Column(name = "billing_period_end", nullable = false)
+    private LocalDate billingPeriodEnd;
+
+    @Column(name = "due_date", nullable = false)
+    private LocalDate dueDate;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
@@ -62,6 +76,9 @@ public class Invoice {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
+
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL)
+    private List<Ticket> tickets;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
