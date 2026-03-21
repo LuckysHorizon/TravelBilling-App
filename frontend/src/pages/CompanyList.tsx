@@ -1,20 +1,41 @@
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag } from 'antd';
+import { Card, Table, Button, Input, Tag, Modal, Form, Select, InputNumber, message } from 'antd';
 import { Search, Plus, Building2, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanies } from '../api/queries';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../api/axiosInstance';
 
 const CompanyList = () => {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form] = Form.useForm();
   const { data, isLoading } = useCompanies(page, size);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const createCompanyMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const { data } = await api.post('/companies', values);
+      return data;
+    },
+    onSuccess: () => {
+      message.success('Company created successfully');
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      setModalOpen(false);
+      form.resetFields();
+    },
+    onError: (err: any) => {
+      message.error(err.response?.data?.message || 'Failed to create company');
+    },
+  });
 
   const columns = [
     {
       title: 'Company Name',
       key: 'name',
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div className="flex items-center gap-3">
           <div className="bg-brand-paper p-2 rounded-lg text-brand-dark">
             <Building2 size={16} />
@@ -52,12 +73,12 @@ const CompanyList = () => {
       title: 'Billing Cycle',
       dataIndex: 'billingCycle',
       key: 'cycle',
-      render: (text: string) => <Tag color="processing">{text.replace('_', ' ')}</Tag>
+      render: (text: string) => text ? <Tag color="processing">{text.replace('_', ' ')}</Tag> : '—'
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <Button 
           type="link" 
           onClick={() => navigate(`/companies/${record.id}`)}
@@ -80,6 +101,7 @@ const CompanyList = () => {
           type="primary" 
           icon={<Plus size={16} />} 
           className="bg-brand-dark hover:bg-black font-medium"
+          onClick={() => { form.resetFields(); setModalOpen(true); }}
         >
           Add Company
         </Button>
@@ -111,6 +133,58 @@ const CompanyList = () => {
           }}
         />
       </Card>
+
+      <Modal
+        title="Add New Company"
+        open={modalOpen}
+        onCancel={() => { setModalOpen(false); form.resetFields(); }}
+        onOk={() => form.submit()}
+        confirmLoading={createCompanyMutation.isPending}
+        okButtonProps={{ className: 'bg-brand-dark' }}
+        width={600}
+      >
+        <Form form={form} layout="vertical" onFinish={(values) => createCompanyMutation.mutate(values)}>
+          <div className="grid grid-cols-2 gap-x-4">
+            <Form.Item name="name" label="Company Name" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="gstNumber" label="GST Number" rules={[{ required: true }]}>
+              <Input className="font-mono" />
+            </Form.Item>
+            <Form.Item name="billingEmail" label="Billing Email" rules={[{ required: true, type: 'email' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="contactName" label="Contact Name">
+              <Input />
+            </Form.Item>
+            <Form.Item name="phone" label="Phone">
+              <Input />
+            </Form.Item>
+            <Form.Item name="city" label="City">
+              <Input />
+            </Form.Item>
+            <Form.Item name="state" label="State">
+              <Input />
+            </Form.Item>
+            <Form.Item name="pinCode" label="PIN Code">
+              <Input />
+            </Form.Item>
+            <Form.Item name="serviceChargePct" label="Service Charge (%)" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} max={100} step={0.5} />
+            </Form.Item>
+            <Form.Item name="billingCycle" label="Billing Cycle" rules={[{ required: true }]}>
+              <Select options={[
+                { value: 'MONTHLY', label: 'Monthly' },
+                { value: 'BIWEEKLY', label: 'Bi-Weekly' },
+                { value: 'WEEKLY', label: 'Weekly' },
+              ]} />
+            </Form.Item>
+            <Form.Item name="address" label="Address" className="col-span-2">
+              <Input.TextArea rows={2} />
+            </Form.Item>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

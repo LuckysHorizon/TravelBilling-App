@@ -34,11 +34,26 @@ public class Company {
     private BigDecimal serviceChargePct;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "billing_cycle", nullable = false, length = 10)
+    @Column(name = "billing_cycle", nullable = false, length = 20)
     private BillingCycle billingCycle;
 
     @Column(name = "credit_limit", precision = 12, scale = 2)
     private BigDecimal creditLimit;
+
+    @Column(name = "contact_name")
+    private String contactName;
+
+    @Column(length = 20)
+    private String phone;
+
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 100)
+    private String state;
+
+    @Column(name = "pin_code", length = 10)
+    private String pinCode;
 
     @Column(name = "is_active")
     private Boolean isActive = true;

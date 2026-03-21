@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import api from '../api/axiosInstance';
 
 const MetricCard = ({ title, value, loading, icon: Icon, colorClass, subtitle }: any) => (
   <Card className="h-full">
@@ -31,15 +33,14 @@ const Dashboard = () => {
   const { data: ticketsData, isLoading: ticketsLoading } = useRecentTickets(5);
   const navigate = useNavigate();
 
-  // Dummy chart data for illustration (in a real app, this would come from the API)
-  const chartData = [
-    { name: 'Sep', revenue: 450000 },
-    { name: 'Oct', revenue: 520000 },
-    { name: 'Nov', revenue: 480000 },
-    { name: 'Dec', revenue: 610000 },
-    { name: 'Jan', revenue: 590000 },
-    { name: 'Feb', revenue: stats?.currentMonthRevenue || 0, isCurrent: true },
-  ];
+  // Fetch real revenue trend from API
+  const { data: chartData, isLoading: chartLoading } = useQuery({
+    queryKey: ['reports', 'revenue-trend'],
+    queryFn: async () => {
+      const { data } = await api.get('/reports/revenue-trend');
+      return data;
+    },
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
@@ -164,11 +165,11 @@ const Dashboard = () => {
         <div className="lg:col-span-2">
           <Card className="h-full" title={<span className="font-serif">Revenue Trend (6 Months)</span>}>
             <div className="h-[300px] w-full">
-              {statsLoading ? (
+              {statsLoading || chartLoading ? (
                 <Skeleton active className="h-full w-full" />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                  <BarChart data={chartData || []} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
                     <XAxis 
                       dataKey="name" 
                       axisLine={false} 
@@ -185,7 +186,7 @@ const Dashboard = () => {
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                     />
                     <Bar dataKey="revenue" radius={[6, 6, 6, 6]} barSize={40}>
-                      {chartData.map((entry, index) => (
+                      {(chartData || []).map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={entry.isCurrent ? '#c4a77d' : '#1a1a1a'} />
                       ))}
                     </Bar>

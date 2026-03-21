@@ -5,33 +5,31 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend
 } from 'recharts';
-import { useDashboardStats } from '../api/queries';
+import { useQuery } from '@tanstack/react-query';
+import api from '../api/axiosInstance';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const Reports = () => {
-  const { data: stats, isLoading } = useDashboardStats();
   const [dateRange, setDateRange] = useState<any>([dayjs().startOf('year'), dayjs()]);
 
-  // Dummy chart data for illustration
-  const revenueData = [
-    { name: 'Sep', revenue: 450000 },
-    { name: 'Oct', revenue: 520000 },
-    { name: 'Nov', revenue: 480000 },
-    { name: 'Dec', revenue: 610000 },
-    { name: 'Jan', revenue: 590000 },
-    { name: 'Feb', revenue: stats?.currentMonthRevenue || 650000, isCurrent: true },
-  ];
+  const { data: revenueTrend, isLoading: revLoading } = useQuery({
+    queryKey: ['reports', 'revenue-trend'],
+    queryFn: async () => {
+      const { data } = await api.get('/reports/revenue-trend');
+      return data;
+    },
+  });
 
-  const clientSpendData = [
-    { name: 'TechCorp India', value: 1200000 },
-    { name: 'Global Logistics', value: 850000 },
-    { name: 'Apex Solutions', value: 450000 },
-    { name: 'Zenith Retail', value: 300000 },
-    { name: 'Others', value: 500000 },
-  ];
+  const { data: clientBreakdown, isLoading: clientLoading } = useQuery({
+    queryKey: ['reports', 'client-breakdown'],
+    queryFn: async () => {
+      const { data } = await api.get('/reports/client-breakdown');
+      return data;
+    },
+  });
 
   const COLORS = ['#1a1a1a', '#4a4a4a', '#c4a77d', '#e5e7eb', '#9ca3af'];
 
@@ -46,12 +44,11 @@ const Reports = () => {
     { title: 'Outstanding', dataIndex: 'outstanding', key: 'outstanding', render: (val: number) => <span className="text-red-600">{formatCurrency(val)}</span> },
   ];
 
-  const tableData = [
-    { key: 1, name: 'TechCorp India', tickets: 145, spend: 1200000, outstanding: 45000 },
-    { key: 2, name: 'Global Logistics', tickets: 87, spend: 850000, outstanding: 120000 },
-    { key: 3, name: 'Apex Solutions', tickets: 42, spend: 450000, outstanding: 0 },
-    { key: 4, name: 'Zenith Retail', tickets: 30, spend: 300000, outstanding: 15000 },
-  ];
+  // Prepare pie chart data from clientBreakdown
+  const pieData = (clientBreakdown || []).map((item: any) => ({
+    name: item.name,
+    value: Number(item.spend) || 0,
+  }));
 
   return (
     <div className="space-y-6">
@@ -68,10 +65,10 @@ const Reports = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
-        <Card title={<span className="font-serif">Revenue Over Time</span>} className="shadow-sm">
+        <Card title={<span className="font-serif">Revenue Over Time</span>} className="shadow-sm" loading={revLoading}>
           <div className="h-[300px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueData}>
+              <BarChart data={revenueTrend || []}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} dy={10} fontSize={12} fill="#6b7280" />
                 <YAxis hide />
                 <Tooltip 
@@ -79,7 +76,7 @@ const Reports = () => {
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
                 <Bar dataKey="revenue" radius={[6, 6, 6, 6]} barSize={40}>
-                  {revenueData.map((entry, index) => (
+                  {(revenueTrend || []).map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.isCurrent ? '#c4a77d' : '#1a1a1a'} />
                   ))}
                 </Bar>
@@ -89,48 +86,45 @@ const Reports = () => {
         </Card>
 
         {/* Top Clients Chart */}
-        <Card title={<span className="font-serif">Top Clients by Billing</span>} className="shadow-sm">
+        <Card title={<span className="font-serif">Top Clients by Billing</span>} className="shadow-sm" loading={clientLoading}>
           <div className="h-[300px] w-full mt-4 flex justify-center items-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={clientSpendData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={80}
-                  outerRadius={110}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {clientSpendData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: any) => formatCurrency(value as number)} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={110}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {pieData.map((_: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: any) => formatCurrency(value as number)} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-gray-400">No client data yet</p>
+            )}
           </div>
         </Card>
       </div>
 
       {/* Client Breakdown Table */}
       <Card title={<span className="font-serif">Client Breakdown</span>} className="shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-gray-400" />
-            <Select defaultValue="all" className="w-48" bordered={false}>
-              <Option value="all">All Clients</Option>
-              <Option value="outstanding">With Outstanding</Option>
-            </Select>
-          </div>
-        </div>
         <Table 
           columns={columns} 
-          dataSource={tableData} 
+          dataSource={clientBreakdown || []} 
           pagination={false} 
           size="middle" 
+          loading={clientLoading}
+          rowKey="key"
         />
       </Card>
     </div>

@@ -35,3 +35,42 @@
 .ant-card {
   @apply shadow-card border-none !important;
 }
+
+/* Allow the upload dragger to keep its own border */
+.ant-upload-wrapper .ant-upload-drag {
+  border: 2px dashed #d1d5db !important;
+  border-radius: 0.75rem !important;
+  background: linear-gradient(135deg, #f9fafb, #ffffff) !important;
+}
+
+.ant-upload-wrapper .ant-upload-drag:hover {
+  border-color: #c4a77d !important;
+  background: linear-gradient(135deg, #eff6ff, #ffffff) !important;
+}
+
+/* Responsive sidebar - collapse on smaller viewports */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    position: fixed !important;
+    height: 100vh !important;
+    z-index: 50 !important;
+  }
+
+  .ant-layout-sider-collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Fix modal scrolling on small screens */
+.ant-modal {
+  max-height: 90vh;
+}
+
+.ant-modal .ant-modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+

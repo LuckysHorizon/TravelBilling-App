@@ -13,4 +13,8 @@ public interface GstConfigRepository extends JpaRepository<GstConfig, Long> {
     
     @Query(value = "SELECT * FROM gst_config g WHERE g.effective_from <= :date ORDER BY g.effective_from DESC LIMIT 1", nativeQuery = true)
     Optional<GstConfig> findActiveConfigForDate(LocalDate date);
+
+    default Optional<GstConfig> findActiveConfig() {
+        return findActiveConfigForDate(LocalDate.now());
+    }
 }

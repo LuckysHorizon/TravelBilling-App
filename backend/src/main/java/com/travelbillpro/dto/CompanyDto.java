@@ -24,6 +24,11 @@ public class CompanyDto {
         private String billingEmail;
 
         private String address;
+        private String contactName;
+        private String phone;
+        private String city;
+        private String state;
+        private String pinCode;
 
         @NotNull(message = "Service Charge Percentage is required")
         private BigDecimal serviceChargePct;
@@ -41,10 +46,15 @@ public class CompanyDto {
         private String gstNumber;
         private String billingEmail;
         private String address;
+        private String contactName;
+        private String phone;
+        private String city;
+        private String state;
+        private String pinCode;
         private BigDecimal serviceChargePct;
         private BillingCycle billingCycle;
         private BigDecimal creditLimit;
-        private Boolean isActive;
+        private Boolean active; // frontend uses 'active' not 'isActive'
         private LocalDateTime createdAt;
         private Long createdById;
     }

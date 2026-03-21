@@ -76,3 +76,5 @@ logging:
     com.travelbillpro: DEBUG
     org.springframework.security: INFO
     org.hibernate.SQL: WARN
+  file:
+    name: logs/app.log

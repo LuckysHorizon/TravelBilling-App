@@ -1,5 +1,6 @@
 package com.travelbillpro.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -13,10 +14,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
+        log.warn("Business exception: {} [{}]", ex.getMessage(), ex.getErrorCode());
         ErrorResponse error = new ErrorResponse(ex.getErrorCode(), ex.getMessage(), LocalDateTime.now());
         return new ResponseEntity<>(error, ex.getHttpStatus());
     }
@@ -43,9 +46,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
-        ErrorResponse error = new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected error occurred", LocalDateTime.now());
+        log.error("Unhandled exception: {}", ex.getMessage(), ex);
+        ErrorResponse error = new ErrorResponse("INTERNAL_SERVER_ERROR", ex.getMessage(), LocalDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     public record ErrorResponse(String errorCode, String message, LocalDateTime timestamp) {}
 }
+

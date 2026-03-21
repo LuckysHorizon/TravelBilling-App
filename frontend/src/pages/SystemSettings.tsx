@@ -1,14 +1,87 @@
-import React from 'react';
-import { Card, Form, Input, Button, InputNumber, Divider, message } from 'antd';
+import React, { useEffect } from 'react';
+import { Card, Form, Input, Button, InputNumber, Divider, message, Spin } from 'antd';
 import { Settings, Percent, Building2, Server } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../api/axiosInstance';
 
 const SystemSettings = () => {
   const [form] = Form.useForm();
+  const queryClient = useQueryClient();
 
-  const handleSave = (values: any) => {
-    console.log('Saved settings:', values);
-    message.success('System settings updated successfully.');
-  };
+  // Fetch system config
+  const { data: systemConfig, isLoading: configLoading } = useQuery({
+    queryKey: ['systemConfig'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/system-config');
+      return data;
+    },
+  });
+
+  // Fetch GST config
+  const { data: gstConfig, isLoading: gstLoading } = useQuery({
+    queryKey: ['gstConfig'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/gst-config');
+      return data;
+    },
+  });
+
+  // Set form values when data loads
+  useEffect(() => {
+    if (systemConfig || gstConfig) {
+      form.setFieldsValue({
+        agencyName: systemConfig?.agencyName || '',
+        gstin: systemConfig?.gstin || '',
+        address: systemConfig?.address || '',
+        cgstRate: gstConfig?.cgstRate || 9,
+        sgstRate: gstConfig?.sgstRate || 9,
+        igstRate: systemConfig?.igstRate || '',
+        smtpHost: systemConfig?.smtpHost || '',
+        smtpPort: systemConfig?.smtpPort ? Number(systemConfig.smtpPort) : undefined,
+        smtpUsername: systemConfig?.smtpUsername || '',
+        smtpPassword: systemConfig?.smtpPassword || '',
+      });
+    }
+  }, [systemConfig, gstConfig, form]);
+
+  const saveConfigMutation = useMutation({
+    mutationFn: async (values: any) => {
+      // Save system config
+      const configPayload: Record<string, string> = {};
+      if (values.agencyName) configPayload['agencyName'] = values.agencyName;
+      if (values.gstin) configPayload['gstin'] = values.gstin;
+      if (values.address) configPayload['address'] = values.address;
+      if (values.igstRate !== undefined) configPayload['igstRate'] = String(values.igstRate);
+      if (values.smtpHost) configPayload['smtpHost'] = values.smtpHost;
+      if (values.smtpPort !== undefined) configPayload['smtpPort'] = String(values.smtpPort);
+      if (values.smtpUsername) configPayload['smtpUsername'] = values.smtpUsername;
+      if (values.smtpPassword) configPayload['smtpPassword'] = values.smtpPassword;
+
+      await api.put('/admin/system-config', configPayload);
+
+      // Save GST config
+      if (values.cgstRate !== undefined && values.sgstRate !== undefined) {
+        await api.put('/admin/gst-config', {
+          cgstRate: values.cgstRate,
+          sgstRate: values.sgstRate,
+        });
+      }
+    },
+    onSuccess: () => {
+      message.success('System settings updated successfully.');
+      queryClient.invalidateQueries({ queryKey: ['systemConfig'] });
+      queryClient.invalidateQueries({ queryKey: ['gstConfig'] });
+    },
+    onError: (err: any) => {
+      message.error(err.response?.data?.message || 'Failed to save settings');
+    },
+  });
+
+  const isLoading = configLoading || gstLoading;
+
+  if (isLoading) {
+    return <div className="flex justify-center p-20"><Spin size="large" /></div>;
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -20,15 +93,7 @@ const SystemSettings = () => {
       <Form
         form={form}
         layout="vertical"
-        onFinish={handleSave}
-        initialValues={{
-          agencyName: 'TravelBill Pro Agency',
-          gstin: '27AADCA2230EA1',
-          cgstRate: 9,
-          sgstRate: 9,
-          smtpHost: 'smtp.gmail.com',
-          smtpPort: 587,
-        }}
+        onFinish={(values) => saveConfigMutation.mutate(values)}
       >
         <Card title={<span className="flex items-center gap-2 font-serif text-lg"><Building2 size={18}/> Agency Profile</span>} className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
@@ -78,7 +143,9 @@ const SystemSettings = () => {
 
         <div className="flex justify-end gap-3 pb-12">
           <Button onClick={() => form.resetFields()}>Discard Changes</Button>
-          <Button type="primary" htmlType="submit" className="bg-brand-dark">Save Configuration</Button>
+          <Button type="primary" htmlType="submit" className="bg-brand-dark" loading={saveConfigMutation.isPending}>
+            Save Configuration
+          </Button>
         </div>
       </Form>
     </div>
