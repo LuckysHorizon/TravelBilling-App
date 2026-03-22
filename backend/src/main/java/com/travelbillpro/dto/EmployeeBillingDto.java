@@ -12,7 +12,7 @@ public class EmployeeBillingDto {
     public static class CreateInvoiceRequest {
         private Long companyId;
         private Long employeeId;
-        private String invoiceNumber; // overridable
+        private String invoiceNumber;
         private LocalDate invoiceDate;
         private LocalDate billingPeriodFrom;
         private LocalDate billingPeriodTo;
@@ -29,7 +29,7 @@ public class EmployeeBillingDto {
 
     @Data
     public static class LineItemRequest {
-        private Long ticketId; // nullable for manual entries
+        private Long ticketId;
         private String particulars;
         private String sacCode;
         private BigDecimal taxableValue;
@@ -45,8 +45,13 @@ public class EmployeeBillingDto {
         private LocalDate invoiceDate;
         private LocalDate billingPeriodFrom;
         private LocalDate billingPeriodTo;
+        // Passenger / ticket info
         private String passengerName;
         private String mobile;
+        private String pnr;
+        private LocalDate dateOfTravel;
+        private String fromCity;
+        private String toCity;
         // Company info
         private Long companyId;
         private String companyName;
