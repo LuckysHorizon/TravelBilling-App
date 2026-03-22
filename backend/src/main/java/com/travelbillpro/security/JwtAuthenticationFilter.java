@@ -1,5 +1,6 @@
 package com.travelbillpro.security;
 
+import com.travelbillpro.config.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -53,6 +54,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
                 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
+                    // Set tenant context from JWT claims
+                    Long orgId = jwtService.extractOrgId(jwt);
+                    String orgSlug = jwtService.extractOrgSlug(jwt);
+                    String dbUrl = jwtService.extractDbUrl(jwt);
+
+                    if (orgId != null) {
+                        TenantContext.setOrgId(orgId);
+                        TenantContext.setOrgSlug(orgSlug);
+                        TenantContext.setDbUrl(dbUrl);
+                    }
+
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -63,11 +75,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // Token is invalid or expired
             logger.error("Could not set user authentication in security context", e);
         }
         
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // Always clear tenant context after request
+            TenantContext.clear();
+        }
     }
     
     private String extractJwtFromCookie(HttpServletRequest request) {

@@ -1,7 +1,5 @@
 package com.travelbillpro.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.travelbillpro.enums.Role;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,41 +7,35 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "organizations")
 @Getter
 @Setter
-public class User {
+public class Organization {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private String name;
+
     @Column(nullable = false, unique = true, length = 100)
-    private String username;
+    private String slug;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @Column(name = "db_url", nullable = false, columnDefinition = "TEXT")
+    private String dbUrl;
 
-    @JsonIgnore
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+    @Column(name = "admin_email", nullable = false)
+    private String adminEmail;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private Role role;
+    private String status = "PROVISIONING"; // PROVISIONING, ACTIVE, SUSPENDED
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id")
-    private Organization organization;
+    @Column(name = "plan_tier", length = 20)
+    private String planTier = "STANDARD";
 
-    @Column(name = "failed_attempts")
-    private Integer failedAttempts = 0;
-
-    @Column(name = "locked_until")
-    private LocalDateTime lockedUntil;
-
-    @Column(name = "is_active")
-    private Boolean isActive = true;
+    @Column(name = "provisioning_log", columnDefinition = "TEXT")
+    private String provisioningLog;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -6,7 +6,10 @@ export interface User {
   userId: number;
   username: string;
   email: string;
-  role: 'ADMIN' | 'BILLING_STAFF' | 'VIEWER';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'BILLING_STAFF' | 'VIEWER';
+  orgId?: number | null;
+  orgName?: string | null;
+  orgSlug?: string | null;
 }
 
 interface AuthState {

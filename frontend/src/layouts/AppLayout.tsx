@@ -19,7 +19,8 @@ import {
   Users,
   Settings2,
   Activity,
-  UserRoundSearch
+  UserRoundSearch,
+  Globe
 } from 'lucide-react';
 
 const { Header, Sider, Content } = Layout;
@@ -95,6 +96,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           { key: '/settings/system', label: 'System Settings', icon: <Settings2 size={16} /> },
           { key: '/audit-logs', label: 'Audit Logs', icon: <Activity size={16} /> }
         ]
+      });
+    }
+
+    if (user?.role === 'SUPER_ADMIN') {
+      items.push({
+        key: '/super-admin',
+        icon: <Globe size={18} />,
+        label: 'Super Admin',
       });
     }
 

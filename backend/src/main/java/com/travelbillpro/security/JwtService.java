@@ -27,6 +27,23 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public Long extractOrgId(String token) {
+        Claims claims = extractAllClaims(token);
+        Object orgId = claims.get("orgId");
+        if (orgId == null) return null;
+        return ((Number) orgId).longValue();
+    }
+
+    public String extractOrgSlug(String token) {
+        Claims claims = extractAllClaims(token);
+        return (String) claims.get("orgSlug");
+    }
+
+    public String extractDbUrl(String token) {
+        Claims claims = extractAllClaims(token);
+        return (String) claims.get("dbUrl");
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -34,6 +51,17 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
+    }
+
+    /**
+     * Generate token with tenant context.
+     */
+    public String generateToken(UserDetails userDetails, Long orgId, String orgSlug, String dbUrl) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        if (orgId != null) extraClaims.put("orgId", orgId);
+        if (orgSlug != null) extraClaims.put("orgSlug", orgSlug);
+        if (dbUrl != null) extraClaims.put("dbUrl", dbUrl);
+        return generateToken(extraClaims, userDetails);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {

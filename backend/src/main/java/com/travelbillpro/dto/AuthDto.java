@@ -25,6 +25,10 @@ public class AuthDto {
         private String username;
         private String email;
         private String role;
+        // Tenant info
+        private Long orgId;
+        private String orgName;
+        private String orgSlug;
         // Tokens are returned in HttpOnly cookies, not in the response body
     }
 }

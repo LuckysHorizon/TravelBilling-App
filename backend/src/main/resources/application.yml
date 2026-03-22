@@ -32,10 +32,13 @@ spring:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
 
-  # Flyway Configuration
+  # Flyway Configuration — runs ONLY against the master DB
   flyway:
     enabled: true
     baseline-on-migrate: true
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/travelbill}
+    user: ${SPRING_DATASOURCE_USERNAME:travelbill}
+    password: ${SPRING_DATASOURCE_PASSWORD:Lucky@0716}
 
   # SMTP Configuration
   mail:

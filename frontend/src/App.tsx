@@ -20,6 +20,7 @@ import SystemSettings from './pages/SystemSettings';
 import AuditLogs from './pages/AuditLogs';
 import BillingPanels from './pages/BillingPanels';
 import EmployeeBilling from './pages/EmployeeBilling';
+import SuperAdmin from './pages/SuperAdmin';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
@@ -58,6 +59,11 @@ function App() {
               <Route path="/settings/users" element={<UserManagement />} />
               <Route path="/settings/system" element={<SystemSettings />} />
               <Route path="/audit-logs" element={<AuditLogs />} />
+            </Route>
+
+            {/* Super Admin Only */}
+            <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+              <Route path="/super-admin" element={<SuperAdmin />} />
             </Route>
             
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

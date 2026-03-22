@@ -1,6 +1,7 @@
 package com.travelbillpro.controller;
 
 import com.travelbillpro.dto.AuthDto;
+import com.travelbillpro.entity.Organization;
 import com.travelbillpro.entity.User;
 import com.travelbillpro.repository.UserRepository;
 import com.travelbillpro.security.CustomUserDetails;
@@ -58,13 +59,19 @@ public class AuthController {
                 userRepository.save(user);
             }
 
-            setTokenCookies(response, userDetails);
+            setTokenCookies(response, userDetails, user);
+
+            // Build response with org context
+            Organization org = user.getOrganization();
 
             AuthDto.AuthResponse authResponse = AuthDto.AuthResponse.builder()
                     .userId(user.getId())
                     .username(user.getUsername())
                     .email(user.getEmail())
                     .role(user.getRole().name())
+                    .orgId(org != null ? org.getId() : null)
+                    .orgName(org != null ? org.getName() : null)
+                    .orgSlug(org != null ? org.getSlug() : null)
                     .build();
 
             return ResponseEntity.ok(authResponse);
@@ -104,8 +111,7 @@ public class AuthController {
                 CustomUserDetails userDetails = new CustomUserDetails(user);
 
                 if (jwtService.isTokenValid(refreshToken, userDetails)) {
-                    // Rotate tokens
-                    setTokenCookies(response, userDetails);
+                    setTokenCookies(response, userDetails, user);
                     return ResponseEntity.ok().build();
                 }
             }
@@ -142,25 +148,38 @@ public class AuthController {
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         User user = userDetails.getUser();
+        Organization org = user.getOrganization();
 
         AuthDto.AuthResponse authResponse = AuthDto.AuthResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .orgId(org != null ? org.getId() : null)
+                .orgName(org != null ? org.getName() : null)
+                .orgSlug(org != null ? org.getSlug() : null)
                 .build();
 
         return ResponseEntity.ok(authResponse);
     }
 
-    private void setTokenCookies(HttpServletResponse response, CustomUserDetails userDetails) {
-        // Generate Access Token
-        String accessToken = jwtService.generateToken(userDetails);
+    private void setTokenCookies(HttpServletResponse response, CustomUserDetails userDetails, User user) {
+        // Get org context for JWT claims
+        Organization org = user.getOrganization();
+        Long orgId = org != null ? org.getId() : null;
+        String orgSlug = org != null ? org.getSlug() : null;
+        String dbUrl = org != null ? org.getDbUrl() : null;
 
-        // Generate Refresh Token with JTI
+        // Generate Access Token with org context
+        String accessToken = jwtService.generateToken(userDetails, orgId, orgSlug, dbUrl);
+
+        // Generate Refresh Token with JTI + org context
         String jti = UUID.randomUUID().toString();
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("jti", jti);
+        if (orgId != null) extraClaims.put("orgId", orgId);
+        if (orgSlug != null) extraClaims.put("orgSlug", orgSlug);
+        if (dbUrl != null) extraClaims.put("dbUrl", dbUrl);
         String refreshToken = jwtService.generateToken(extraClaims, userDetails);
 
         // Store JTI in Redis
@@ -169,7 +188,7 @@ public class AuthController {
         // Access Token Cookie
         Cookie accessCookie = new Cookie("accessToken", accessToken);
         accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(false); // Set to true in prod with HTTPS
+        accessCookie.setSecure(false);
         accessCookie.setPath("/");
         accessCookie.setMaxAge((int) (accessTokenExpiry / 1000));
         response.addCookie(accessCookie);
@@ -177,8 +196,8 @@ public class AuthController {
         // Refresh Token Cookie
         Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
         refreshCookie.setHttpOnly(true);
-        refreshCookie.setSecure(false); // Set to true in prod with HTTPS
-        refreshCookie.setPath("/api/auth/refresh"); // Only sent to refresh endpoint
+        refreshCookie.setSecure(false);
+        refreshCookie.setPath("/api/auth/refresh");
         refreshCookie.setMaxAge((int) (refreshTokenExpiry / 1000));
         response.addCookie(refreshCookie);
     }

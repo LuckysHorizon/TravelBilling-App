@@ -18,7 +18,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+        // Use the eager-fetch query to load org alongside user
+        User user = userRepository.findByUsernameWithOrg(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
         
         return new CustomUserDetails(user);
