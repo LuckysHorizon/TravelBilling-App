@@ -20,6 +20,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     boolean existsByPnrNumber(String pnrNumber);
     
     Page<Ticket> findByCompanyId(Long companyId, Pageable pageable);
+    List<Ticket> findByCompanyIdAndStatus(Long companyId, TicketStatus status);
     Page<Ticket> findByStatus(TicketStatus status, Pageable pageable);
     long countByStatus(TicketStatus status);
     
@@ -27,6 +28,14 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     BigDecimal sumTotalAmountByStatusInAndDateBetween(List<TicketStatus> statuses, LocalDate startDate, LocalDate endDate);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    long countByCompanyIdAndCreatedAtBetween(Long companyId, LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT SUM(t.totalAmount) FROM Ticket t WHERE t.company.id = :companyId AND t.status IN :statuses AND t.travelDate BETWEEN :startDate AND :endDate")
+    BigDecimal sumTotalAmountByCompanyIdAndStatusInAndDateBetween(Long companyId, List<TicketStatus> statuses, LocalDate startDate, LocalDate endDate);
+
+    @Query("SELECT t FROM Ticket t WHERE LOWER(t.pnrNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(t.passengerName) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<Ticket> searchByPnrOrPassenger(String search, Pageable pageable);
     
     List<Ticket> findByCompanyIdAndStatusAndTravelDateBetween(
             Long companyId, 
@@ -42,6 +51,11 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByInvoiceId(Long invoiceId);
 
     List<Ticket> findByBillingPanelId(Long billingPanelId);
+
+    List<Ticket> findByEmployeeIdAndTravelDateBetween(Long employeeId, LocalDate from, LocalDate to);
+
+    List<Ticket> findByCompanyIdAndPassengerNameIgnoreCaseAndTravelDateBetween(
+            Long companyId, String passengerName, LocalDate from, LocalDate to);
 
     default List<Ticket> findTicketsByInvoiceId(Long invoiceId) {
         return findByInvoiceId(invoiceId);

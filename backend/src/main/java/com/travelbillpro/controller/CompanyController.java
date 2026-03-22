@@ -48,4 +48,9 @@ public class CompanyController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(companyService.updateCompany(id, request, userDetails.getUser()));
     }
+
+    @GetMapping("/{id}/stats")
+    public ResponseEntity<java.util.Map<String, Object>> getCompanyStats(@PathVariable Long id) {
+        return ResponseEntity.ok(companyService.getCompanyStats(id));
+    }
 }

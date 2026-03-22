@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Table, Button, Input, Tag, Select, Popconfirm, message } from 'antd';
 import { Search, Plus, Filter, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,19 @@ const TicketList = () => {
   const [size, setSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const { data, isLoading } = useTickets(page, size, statusFilter);
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input by 400ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  const { data, isLoading } = useTickets(page, size, statusFilter, debouncedSearch || undefined);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -185,6 +197,9 @@ const TicketList = () => {
             prefix={<Search className="text-gray-400" size={16} />} 
             placeholder="Search tickets by PNR or Passenger..." 
             className="max-w-sm rounded-lg"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
           />
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Filter size={16} className="text-gray-400" />

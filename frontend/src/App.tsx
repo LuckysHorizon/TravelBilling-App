@@ -19,6 +19,7 @@ import UserManagement from './pages/UserManagement';
 import SystemSettings from './pages/SystemSettings';
 import AuditLogs from './pages/AuditLogs';
 import BillingPanels from './pages/BillingPanels';
+import EmployeeBilling from './pages/EmployeeBilling';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
@@ -49,6 +50,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'BILLING_STAFF']} />}>
               <Route path="/tickets/upload" element={<TicketUpload />} />
               <Route path="/tickets/review/:batchId" element={<TicketReview />} />
+              <Route path="/employee-billing" element={<EmployeeBilling />} />
             </Route>
 
             {/* Roles: ADMIN Only */}

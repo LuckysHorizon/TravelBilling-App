@@ -22,4 +22,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     @Query("SELECT SUM(i.grandTotal) FROM Invoice i WHERE i.status = :status")
     BigDecimal sumGrandTotalByStatus(InvoiceStatus status);
+
+    @Query("SELECT SUM(i.grandTotal) FROM Invoice i WHERE i.company.id = :companyId AND i.status IN :statuses")
+    BigDecimal sumGrandTotalByCompanyIdAndStatusIn(Long companyId, List<InvoiceStatus> statuses);
+
+    @Query("SELECT SUM(i.grandTotal) FROM Invoice i WHERE i.company.id = :companyId AND i.status = :status")
+    BigDecimal sumGrandTotalByCompanyIdAndStatus(Long companyId, InvoiceStatus status);
 }

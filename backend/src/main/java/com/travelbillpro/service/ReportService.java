@@ -83,21 +83,25 @@ public class ReportService {
     public List<Map<String, Object>> getClientBreakdown() {
         List<Map<String, Object>> result = new ArrayList<>();
         List<Company> companies = companyRepository.findAll();
+        LocalDate startOfYear = LocalDate.of(LocalDate.now().getYear(), 1, 1);
+        LocalDate today = LocalDate.now();
 
         for (Company company : companies) {
-            BigDecimal totalSpend = ticketRepository.sumTotalAmountByStatusInAndDateBetween(
+            BigDecimal totalSpend = ticketRepository.sumTotalAmountByCompanyIdAndStatusInAndDateBetween(
+                    company.getId(),
                     List.of(TicketStatus.APPROVED, TicketStatus.BILLED, TicketStatus.PAID),
-                    LocalDate.of(LocalDate.now().getYear(), 1, 1),
-                    LocalDate.now()
+                    startOfYear, today
             );
             if (totalSpend == null) totalSpend = BigDecimal.ZERO;
 
-            long ticketCount = ticketRepository.countByCreatedAtBetween(
-                    LocalDate.of(LocalDate.now().getYear(), 1, 1).atStartOfDay(),
-                    LocalDate.now().atTime(23, 59, 59)
+            long ticketCount = ticketRepository.countByCompanyIdAndCreatedAtBetween(
+                    company.getId(),
+                    startOfYear.atStartOfDay(),
+                    today.atTime(23, 59, 59)
             );
 
-            BigDecimal outstanding = invoiceRepository.sumGrandTotalByStatus(InvoiceStatus.SENT);
+            BigDecimal outstanding = invoiceRepository.sumGrandTotalByCompanyIdAndStatus(
+                    company.getId(), InvoiceStatus.SENT);
             if (outstanding == null) outstanding = BigDecimal.ZERO;
 
             Map<String, Object> entry = new LinkedHashMap<>();

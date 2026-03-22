@@ -36,13 +36,19 @@ export const useCompanies = (page = 0, size = 10) => {
 };
 
 // Fetch Tickets
-export const useTickets = (page = 0, size = 10, status?: string) => {
+export const useTickets = (page = 0, size = 10, status?: string, search?: string) => {
   return useQuery({
-    queryKey: ['tickets', page, size, status],
+    queryKey: ['tickets', page, size, status, search],
     queryFn: async () => {
-      const url = status 
-        ? `/tickets/status/${status}?page=${page}&size=${size}&sort=createdAt,desc`
-        : `/tickets?page=${page}&size=${size}&sort=createdAt,desc`;
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('size', String(size));
+      params.set('sort', 'createdAt,desc');
+      if (search) params.set('search', search);
+
+      const url = status
+        ? `/tickets/status/${status}?${params.toString()}`
+        : `/tickets?${params.toString()}`;
       const { data } = await api.get(url);
       return data;
     },

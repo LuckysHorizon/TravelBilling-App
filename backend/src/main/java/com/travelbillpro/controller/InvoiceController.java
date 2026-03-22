@@ -24,6 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -87,6 +88,7 @@ public class InvoiceController {
     // ═════════════════════════════════════════════════════════════════════
 
     @GetMapping("/{id}/download-pdf")
+    @Transactional(readOnly = true)
     public ResponseEntity<Resource> downloadPdf(@PathVariable Long id) {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Invoice not found", "INVOICE_NOT_FOUND", HttpStatus.NOT_FOUND));
@@ -109,6 +111,7 @@ public class InvoiceController {
     // ═════════════════════════════════════════════════════════════════════
 
     @GetMapping("/{id}/download-excel")
+    @Transactional(readOnly = true)
     public ResponseEntity<byte[]> downloadExcel(@PathVariable Long id) {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Invoice not found", "INVOICE_NOT_FOUND", HttpStatus.NOT_FOUND));
@@ -128,6 +131,7 @@ public class InvoiceController {
     // ═════════════════════════════════════════════════════════════════════
 
     @PostMapping("/{id}/send-email")
+    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN', 'BILLING_STAFF')")
     public ResponseEntity<Map<String, String>> sendEmail(
             @PathVariable Long id,

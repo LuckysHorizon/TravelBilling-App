@@ -66,6 +66,11 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
+    public Page<TicketDto.TicketResponse> searchTickets(String search, Pageable pageable) {
+        return ticketRepository.searchByPnrOrPassenger(search, pageable).map(this::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
     public Page<TicketDto.TicketResponse> getTicketsByCompany(Long companyId, Pageable pageable) {
         return ticketRepository.findByCompanyId(companyId, pageable).map(this::mapToResponse);
     }

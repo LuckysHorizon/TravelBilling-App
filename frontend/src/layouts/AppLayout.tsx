@@ -18,7 +18,8 @@ import {
   ClipboardList,
   Users,
   Settings2,
-  Activity
+  Activity,
+  UserRoundSearch
 } from 'lucide-react';
 
 const { Header, Sider, Content } = Layout;
@@ -73,6 +74,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         label: 'Billing Panels',
       },
       {
+        key: '/employee-billing',
+        icon: <UserRoundSearch size={18} />,
+        label: 'Employee Billing',
+      },
+      {
         key: '/reports',
         icon: <BarChart3 size={18} />,
         label: 'Reports',
@@ -104,6 +110,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     if (path.startsWith('/companies')) return ['/companies'];
     if (path.startsWith('/invoices')) return ['/invoices'];
     if (path.startsWith('/billing-panels')) return ['/billing-panels'];
+    if (path.startsWith('/employee-billing')) return ['/employee-billing'];
     if (path.startsWith('/settings/users')) return ['/settings/users'];
     if (path.startsWith('/settings')) return ['/settings'];
     if (path.startsWith('/reports')) return ['/reports'];

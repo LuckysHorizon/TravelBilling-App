@@ -31,7 +31,12 @@ public class TicketController {
     private final LocalFileStorageService fileStorageService;
 
     @GetMapping
-    public ResponseEntity<Page<TicketDto.TicketResponse>> getAllTickets(Pageable pageable) {
+    public ResponseEntity<Page<TicketDto.TicketResponse>> getAllTickets(
+            @RequestParam(required = false) String search,
+            Pageable pageable) {
+        if (search != null && !search.trim().isEmpty()) {
+            return ResponseEntity.ok(ticketService.searchTickets(search.trim(), pageable));
+        }
         return ResponseEntity.ok(ticketService.getAllTickets(pageable));
     }
 

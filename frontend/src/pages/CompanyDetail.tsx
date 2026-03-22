@@ -22,6 +22,16 @@ const CompanyDetail = () => {
     enabled: !!id,
   });
 
+  // Fetch company stats (real analytics)
+  const { data: stats } = useQuery({
+    queryKey: ['company-stats', id],
+    queryFn: async () => {
+      const { data } = await api.get(`/companies/${id}/stats`);
+      return data;
+    },
+    enabled: !!id,
+  });
+
   // Fetch tickets by company
   const { data: ticketsData, isLoading: ticketsLoading } = useQuery({
     queryKey: ['tickets', 'company', id],
@@ -91,17 +101,17 @@ const CompanyDetail = () => {
       <Row gutter={[16, 16]}>
         <Col span={8}>
           <Card bordered={false} className="bg-brand-paper">
-            <Statistic title="Total Billed (YTD)" value={company.stats?.totalBilledYtd || 0} precision={2} prefix="₹" />
+            <Statistic title="Total Billed (YTD)" value={stats?.totalBilledYtd || 0} precision={2} prefix="₹" />
           </Card>
         </Col>
         <Col span={8}>
           <Card bordered={false} className="bg-brand-paper">
-            <Statistic title="Tickets This Month" value={company.stats?.ticketsThisMonth || 0} />
+            <Statistic title="Tickets This Month" value={stats?.ticketsThisMonth || 0} />
           </Card>
         </Col>
         <Col span={8}>
           <Card bordered={false} className="bg-brand-paper">
-            <Statistic title="Outstanding Balance" value={company.stats?.outstandingBalance || 0} precision={2} prefix="₹" valueStyle={{ color: '#cf1322' }} />
+            <Statistic title="Outstanding Balance" value={stats?.outstandingBalance || 0} precision={2} prefix="₹" valueStyle={{ color: '#cf1322' }} />
           </Card>
         </Col>
       </Row>

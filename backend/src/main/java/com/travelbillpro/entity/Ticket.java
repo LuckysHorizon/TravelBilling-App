@@ -24,6 +24,10 @@ public class Ticket {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id")
+    private Employee employee;
+
     @Column(name = "pnr_number", length = 20)
     private String pnrNumber;
 
@@ -51,6 +55,27 @@ public class Ticket {
 
     @Column(name = "service_charge", precision = 10, scale = 2)
     private BigDecimal serviceCharge;
+
+    @Column(name = "passenger_service_fee", precision = 10, scale = 2)
+    private BigDecimal passengerServiceFee;
+
+    @Column(name = "user_development_charges", precision = 10, scale = 2)
+    private BigDecimal userDevelopmentCharges;
+
+    @Column(name = "agent_service_charges", precision = 10, scale = 2)
+    private BigDecimal agentServiceCharges;
+
+    @Column(name = "other_charges", precision = 10, scale = 2)
+    private BigDecimal otherCharges;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal discount;
+
+    @Column(name = "sac_code_air", length = 10)
+    private String sacCodeAir;
+
+    @Column(name = "sac_code_agent", length = 10)
+    private String sacCodeAgent;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal cgst;

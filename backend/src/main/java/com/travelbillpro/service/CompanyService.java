@@ -3,8 +3,12 @@ package com.travelbillpro.service;
 import com.travelbillpro.dto.CompanyDto;
 import com.travelbillpro.entity.Company;
 import com.travelbillpro.entity.User;
+import com.travelbillpro.enums.InvoiceStatus;
+import com.travelbillpro.enums.TicketStatus;
 import com.travelbillpro.exception.BusinessException;
 import com.travelbillpro.repository.CompanyRepository;
+import com.travelbillpro.repository.InvoiceRepository;
+import com.travelbillpro.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,11 +16,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class CompanyService {
 
     private final CompanyRepository companyRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final TicketRepository ticketRepository;
     private final AuditService auditService;
 
     @Transactional(readOnly = true)
@@ -123,5 +135,35 @@ public class CompanyService {
         response.setCreatedAt(company.getCreatedAt());
         response.setCreatedById(company.getCreatedBy() != null ? company.getCreatedBy().getId() : null);
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCompanyStats(Long companyId) {
+        getCompanyEntity(companyId); // validate company exists
+
+        LocalDate now = LocalDate.now();
+        LocalDate startOfYear = now.withMonth(1).withDayOfMonth(1);
+        LocalDate startOfMonth = now.withDayOfMonth(1);
+        LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
+
+        // Total billed YTD = sum of all PAID + SENT invoices this year
+        BigDecimal totalBilledYtd = invoiceRepository.sumGrandTotalByCompanyIdAndStatusIn(
+                companyId, List.of(InvoiceStatus.SENT, InvoiceStatus.PAID));
+        if (totalBilledYtd == null) totalBilledYtd = BigDecimal.ZERO;
+
+        // Tickets this month
+        long ticketsThisMonth = ticketRepository.countByCompanyIdAndCreatedAtBetween(
+                companyId, startOfMonth.atStartOfDay(), endOfMonth.atTime(23, 59, 59));
+
+        // Outstanding = sent but not paid
+        BigDecimal outstandingBalance = invoiceRepository.sumGrandTotalByCompanyIdAndStatus(
+                companyId, InvoiceStatus.SENT);
+        if (outstandingBalance == null) outstandingBalance = BigDecimal.ZERO;
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalBilledYtd", totalBilledYtd);
+        stats.put("ticketsThisMonth", ticketsThisMonth);
+        stats.put("outstandingBalance", outstandingBalance);
+        return stats;
     }
 }
