@@ -33,7 +33,7 @@ public class AuditLogController {
         map.put("action", log.getAction());
         map.put("entityType", log.getEntityType());
         map.put("entityId", log.getEntityId());
-        map.put("user", log.getUser() != null ? log.getUser().getUsername() : "System");
+        map.put("user", log.getUserId() != null ? "User#" + log.getUserId() : "System");
         map.put("timestamp", log.getCreatedAt());
         map.put("ipAddress", log.getIpAddress());
         map.put("details", log.getNewValue() != null ? log.getNewValue() : log.getOldValue());

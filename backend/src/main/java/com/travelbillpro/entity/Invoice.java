@@ -87,9 +87,8 @@ public class Invoice {
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+    @Column(name = "created_by")
+    private Long createdById;
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL)
     private List<Ticket> tickets;

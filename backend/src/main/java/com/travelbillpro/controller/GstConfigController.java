@@ -45,7 +45,7 @@ public class GstConfigController {
         config.setCgstRate(new java.math.BigDecimal(updates.get("cgstRate").toString()));
         config.setSgstRate(new java.math.BigDecimal(updates.get("sgstRate").toString()));
         config.setEffectiveFrom(LocalDate.now());
-        config.setCreatedBy(user);
+        config.setCreatedById(user.getId());
         gstConfigRepository.save(config);
 
         return getCurrentGstConfig();

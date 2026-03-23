@@ -44,7 +44,13 @@ public class TenantProvisioningService {
                     stmt.execute(getSchemaSQL());
                     logBuilder.append("✓ All tables created (empty — no data copied)\n");
 
-                    // Step 2: Create ONLY the org admin user
+                    // Step 2: Drop any FK constraints on created_by/user_id columns
+                    // These columns store user IDs from the master DB and must NOT have FKs
+                    logBuilder.append("Cleaning up user FK constraints...\n");
+                    stmt.execute(getDropUserFkConstraintsSQL());
+                    logBuilder.append("✓ User FK constraints removed (multi-tenant safe)\n");
+
+                    // Step 3: Create ONLY the org admin user
                     logBuilder.append("Creating org admin user...\n");
                     String hashedPassword = passwordEncoder.encode(adminPassword);
                     String seedSQL = getSeedSQL(adminUsername, adminEmail, hashedPassword);
@@ -61,6 +67,34 @@ public class TenantProvisioningService {
             log.error("Provisioning failed", e);
             logBuilder.append("❌ ERROR: ").append(e.getMessage()).append("\n");
             throw new RuntimeException("Provisioning failed: " + e.getMessage(), e);
+        }
+
+        return logBuilder.toString();
+    }
+
+    /**
+     * Repair an existing tenant database by dropping any FK constraints
+     * on created_by / user_id columns that incorrectly reference the users table.
+     * Call this for tenants provisioned before the multi-tenant FK fix.
+     */
+    public String repairTenantDb(String dbUrl) {
+        StringBuilder logBuilder = new StringBuilder();
+        logBuilder.append("Starting tenant DB repair...\n");
+
+        try (HikariDataSource ds = dataSourceManager.createProvisioningDataSource(dbUrl)) {
+            try (Connection conn = ds.getConnection()) {
+                logBuilder.append("✓ Connected to database\n");
+
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute(getDropUserFkConstraintsSQL());
+                    logBuilder.append("✓ User FK constraints cleaned up\n");
+                    logBuilder.append("✅ Repair complete!\n");
+                }
+            }
+        } catch (Exception e) {
+            log.error("Tenant DB repair failed", e);
+            logBuilder.append("❌ ERROR: ").append(e.getMessage()).append("\n");
+            throw new RuntimeException("Repair failed: " + e.getMessage(), e);
         }
 
         return logBuilder.toString();
@@ -105,8 +139,17 @@ public class TenantProvisioningService {
      * Combined schema SQL from V1 through V11 — creates all tables from scratch.
      */
     private String getSchemaSQL() {
+        // TENANT SCHEMA — For org-specific Supabase databases.
+        //
+        // IMPORTANT: No FK constraints on created_by / updated_by / user_id columns.
+        // In multi-tenant architecture, user auth happens against the MASTER DB,
+        // so user IDs from master won't exist in tenant's users table.
+        // These columns are kept as BIGINT for audit tracking only.
+        //
+        // FKs between business tables (company_id, invoice_id, ticket_id) are kept
+        // since those reference tables within the SAME tenant DB.
         return """
-            -- Users
+            -- Users (tenant-local: stores org admin + staff for this tenant)
             CREATE TABLE IF NOT EXISTS users (
                 id BIGSERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
@@ -139,7 +182,7 @@ public class TenantProvisioningService {
                 pdf_storage_path TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                created_by BIGINT REFERENCES users(id)
+                created_by BIGINT
             );
 
             -- Invoice Sequences
@@ -173,7 +216,7 @@ public class TenantProvisioningService {
                 sgst_rate DECIMAL(5,2),
                 total_in_words TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                created_by BIGINT REFERENCES users(id)
+                created_by BIGINT
             );
 
             -- Tickets
@@ -205,9 +248,10 @@ public class TenantProvisioningService {
                 discount DECIMAL(10,2),
                 sac_code_air VARCHAR(20),
                 sac_code_agent VARCHAR(20),
+                billing_panel_id BIGINT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                created_by BIGINT REFERENCES users(id)
+                created_by BIGINT
             );
 
             -- Audit Logs
@@ -218,7 +262,7 @@ public class TenantProvisioningService {
                 action VARCHAR(50) NOT NULL,
                 old_value JSONB,
                 new_value JSONB,
-                user_id BIGINT REFERENCES users(id),
+                user_id BIGINT,
                 ip_address VARCHAR(45),
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -229,7 +273,7 @@ public class TenantProvisioningService {
                 cgst_rate DECIMAL(5,2) NOT NULL,
                 sgst_rate DECIMAL(5,2) NOT NULL,
                 effective_from DATE NOT NULL,
-                created_by BIGINT REFERENCES users(id),
+                created_by BIGINT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -242,7 +286,7 @@ public class TenantProvisioningService {
                 amount DECIMAL(12,2) NOT NULL,
                 type VARCHAR(10) NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                created_by BIGINT REFERENCES users(id)
+                created_by BIGINT
             );
 
             -- Email Templates
@@ -251,7 +295,7 @@ public class TenantProvisioningService {
                 subject VARCHAR(255) NOT NULL,
                 body TEXT NOT NULL,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_by BIGINT REFERENCES users(id)
+                updated_by BIGINT
             );
 
             -- System Config
@@ -259,7 +303,7 @@ public class TenantProvisioningService {
                 key VARCHAR(50) PRIMARY KEY,
                 value TEXT NOT NULL,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_by BIGINT REFERENCES users(id)
+                updated_by BIGINT
             );
 
             -- Billing Panels
@@ -272,7 +316,7 @@ public class TenantProvisioningService {
                 total_amount DECIMAL(12,2) DEFAULT 0,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                created_by BIGINT REFERENCES users(id)
+                created_by BIGINT
             );
 
             -- Extraction Audits
@@ -325,6 +369,49 @@ public class TenantProvisioningService {
             CREATE INDEX IF NOT EXISTS idx_audits_filename ON extraction_audits(source_filename);
             CREATE INDEX IF NOT EXISTS idx_audits_created ON extraction_audits(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_audits_status ON extraction_audits(extraction_status);
+            """;
+    }
+
+    /**
+     * SQL to:
+     * 1. Drop all FK constraints referencing the users table
+     * 2. Add any missing columns to existing tables (schema evolution)
+     *
+     * Safe to run multiple times (idempotent).
+     */
+    private String getDropUserFkConstraintsSQL() {
+        return """
+            -- Part 1: Drop FK constraints referencing users table
+            DO $$
+            DECLARE
+                r RECORD;
+            BEGIN
+                FOR r IN (
+                    SELECT tc.table_name, tc.constraint_name
+                    FROM information_schema.table_constraints tc
+                    JOIN information_schema.constraint_column_usage ccu 
+                        ON tc.constraint_name = ccu.constraint_name
+                        AND tc.table_schema = ccu.table_schema
+                    WHERE tc.constraint_type = 'FOREIGN KEY'
+                      AND ccu.table_name = 'users'
+                      AND tc.table_schema = 'public'
+                )
+                LOOP
+                    EXECUTE 'ALTER TABLE ' || quote_ident(r.table_name) 
+                            || ' DROP CONSTRAINT IF EXISTS ' || quote_ident(r.constraint_name);
+                    RAISE NOTICE 'Dropped FK: %.%', r.table_name, r.constraint_name;
+                END LOOP;
+            END $$;
+
+            -- Part 2: Add missing columns to existing tables (idempotent)
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS billing_panel_id BIGINT;
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS agent_service_charges DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS other_charges DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS passenger_service_fee DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS user_development_charges DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sac_code_air VARCHAR(20);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sac_code_agent VARCHAR(20);
             """;
     }
 

@@ -139,4 +139,12 @@ public class OrganizationService {
         orgRepository.delete(org);
         log.info("✓ Organization {} deleted from master DB", org.getSlug());
     }
+
+    /**
+     * Repair an org's tenant DB by dropping invalid FK constraints.
+     */
+    public String repairDb(Organization org) {
+        log.info("Repairing tenant DB for org: {} ({})", org.getName(), org.getSlug());
+        return provisioningService.repairTenantDb(org.getDbUrl());
+    }
 }

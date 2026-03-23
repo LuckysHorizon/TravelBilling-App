@@ -86,6 +86,17 @@ public class SuperAdminController {
         return ResponseEntity.ok(Map.of("message", "Organization deleted successfully"));
     }
 
+    /**
+     * Repair an org's tenant DB by dropping invalid FK constraints on user columns.
+     * Use this for orgs provisioned before the multi-tenant FK fix.
+     */
+    @PostMapping("/organizations/{id}/repair-db")
+    public ResponseEntity<Map<String, String>> repairOrgDb(@PathVariable Long id) {
+        Organization org = organizationService.getById(id);
+        String repairLog = organizationService.repairDb(org);
+        return ResponseEntity.ok(Map.of("message", "Repair complete", "log", repairLog));
+    }
+
     @Data
     public static class CreateOrgRequest {
         private String name;

@@ -109,7 +109,7 @@ public class InvoiceService {
         invoice.setSgstTotal(totalSgst);
         invoice.setGrandTotal(grandTotal);
         invoice.setStatus(InvoiceStatus.DRAFT); // DRAFT until file is generated
-        invoice.setCreatedBy(user);
+        invoice.setCreatedById(user.getId());
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
@@ -227,7 +227,7 @@ public class InvoiceService {
                 .collect(java.util.stream.Collectors.toList()));
         }
         response.setCreatedAt(invoice.getCreatedAt());
-        response.setCreatedById(invoice.getCreatedBy() != null ? invoice.getCreatedBy().getId() : null);
+        response.setCreatedById(invoice.getCreatedById());
         
         // Count tickets if lazy loaded (careful with N+1 queries in a real high-scale app)
         response.setTicketCount(invoice.getTickets() != null ? invoice.getTickets().size() : 0);
@@ -256,7 +256,7 @@ public class InvoiceService {
         response.setAiConfidence(ticket.getAiConfidence());
         response.setInvoiceId(ticket.getInvoice() != null ? ticket.getInvoice().getId() : null);
         response.setCreatedAt(ticket.getCreatedAt());
-        response.setCreatedById(ticket.getCreatedBy() != null ? ticket.getCreatedBy().getId() : null);
+        response.setCreatedById(ticket.getCreatedById());
         return response;
     }
 }

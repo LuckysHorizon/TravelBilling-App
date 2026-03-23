@@ -104,9 +104,8 @@ public class Ticket {
     @JoinColumn(name = "billing_panel_id")
     private BillingPanel billingPanel;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+    @Column(name = "created_by")
+    private Long createdById;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

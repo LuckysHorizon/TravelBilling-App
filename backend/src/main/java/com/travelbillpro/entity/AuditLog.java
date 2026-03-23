@@ -35,9 +35,8 @@ public class AuditLog {
     @Column(name = "new_value", columnDefinition = "JSONB")
     private String newValue;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(name = "user_id")
+    private Long userId;
 
     @Column(name = "ip_address", length = 45)
     private String ipAddress;

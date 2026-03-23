@@ -35,7 +35,7 @@ public class AuditService {
                 auditLog.setNewValue(objectMapper.writeValueAsString(newValue));
             }
             
-            auditLog.setUser(user);
+            auditLog.setUserId(user != null ? user.getId() : null);
             auditLog.setIpAddress(getClientIp());
             
             auditLogRepository.save(auditLog);

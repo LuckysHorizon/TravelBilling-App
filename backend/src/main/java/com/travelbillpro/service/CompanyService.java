@@ -73,7 +73,7 @@ public class CompanyService {
         company.setBillingCycle(request.getBillingCycle());
         company.setCreditLimit(request.getCreditLimit());
         company.setPdfStoragePath(request.getPdfStoragePath());
-        company.setCreatedBy(user);
+        company.setCreatedById(user.getId());
         company.setIsActive(true);
 
         Company savedCompany = companyRepository.save(company);
@@ -133,7 +133,7 @@ public class CompanyService {
         response.setPdfStoragePath(company.getPdfStoragePath());
         response.setActive(company.getIsActive());
         response.setCreatedAt(company.getCreatedAt());
-        response.setCreatedById(company.getCreatedBy() != null ? company.getCreatedBy().getId() : null);
+        response.setCreatedById(company.getCreatedById());
         return response;
     }
 

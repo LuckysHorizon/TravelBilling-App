@@ -27,9 +27,8 @@ public class GstConfig {
     @Column(name = "effective_from", nullable = false)
     private LocalDate effectiveFrom;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+    @Column(name = "created_by")
+    private Long createdById;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

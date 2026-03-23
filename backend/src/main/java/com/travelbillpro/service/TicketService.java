@@ -111,6 +111,7 @@ public class TicketService {
                 .orElseThrow(() -> new BusinessException("Company not found", "COMPANY_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         List<TicketDto.TicketResponse> results = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
 
         for (MultipartFile file : files) {
             long startMs = System.currentTimeMillis();
@@ -165,7 +166,11 @@ public class TicketService {
                 log.info("Persisted {} ticket(s)", saved.size());
 
                 for (Ticket t : saved) {
-                    auditService.logAction("TICKET", t.getId(), "UPLOADED", null, mapToResponse(t), user);
+                    try {
+                        auditService.logAction("TICKET", t.getId(), "UPLOADED", null, mapToResponse(t), user);
+                    } catch (Exception auditEx) {
+                        log.warn("Audit log failed for ticket {}: {}", t.getId(), auditEx.getMessage());
+                    }
                     results.add(mapToResponse(t));
                 }
 
@@ -178,16 +183,22 @@ public class TicketService {
 
             } catch (ExtractionException | PdfExtractionException | NvidiaApiException e) {
                 log.warn("Extraction failed for {}: {}", filename, e.getMessage());
+                errors.add(filename + ": " + e.getMessage());
                 writeFailedAudit(auditContext, e, startMs);
 
             } catch (Exception e) {
                 log.error("Unexpected pipeline error for {}: {}", filename, e.getMessage(), e);
+                errors.add(filename + ": " + e.getMessage());
                 writeFailedAudit(auditContext, e, startMs);
             }
         }
 
         if (results.isEmpty()) {
-            throw new ExtractionException("Upload completed but OCR/AI extraction did not produce any tickets.");
+            String errorDetail = errors.isEmpty() 
+                ? "Unknown error during processing"
+                : String.join("; ", errors);
+            throw new ExtractionException(
+                "Upload completed but ticket persistence failed: " + errorDetail);
         }
 
         return results;
@@ -251,7 +262,7 @@ public class TicketService {
         // System fields
         ticket.setFilePath(filePath);
         ticket.setCompany(company);
-        ticket.setCreatedBy(user);
+        ticket.setCreatedById(user.getId());
         ticket.setStatus(TicketStatus.PENDING_REVIEW);
 
         return ticket;
@@ -433,7 +444,7 @@ public class TicketService {
         response.setAiConfidence(ticket.getAiConfidence());
         response.setInvoiceId(ticket.getInvoice() != null ? ticket.getInvoice().getId() : null);
         response.setCreatedAt(ticket.getCreatedAt());
-        response.setCreatedById(ticket.getCreatedBy() != null ? ticket.getCreatedBy().getId() : null);
+        response.setCreatedById(ticket.getCreatedById());
         return response;
     }
 }

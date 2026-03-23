@@ -61,7 +61,7 @@ public class BillingPanelService {
         panel.setLabel(request.getLabel());
         panel.setCompany(company);
         panel.setStatus(BillingPanel.BillingPanelStatus.OPEN);
-        panel.setCreatedBy(user);
+        panel.setCreatedById(user.getId());
 
         return mapToResponse(panelRepository.save(panel));
     }
