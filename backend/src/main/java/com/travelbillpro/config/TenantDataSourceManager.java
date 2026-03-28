@@ -24,12 +24,45 @@ public class TenantDataSourceManager {
 
     /**
      * Get or create a DataSource for the given org.
+     * On first creation, runs idempotent schema repair to add any missing columns.
      */
     public DataSource getDataSource(Long orgId, String dbUrl) {
         return tenantDataSources.computeIfAbsent(orgId, id -> {
             log.info("Creating DataSource pool for org {}", id);
-            return createDataSource(dbUrl, "tenant-" + id);
+            HikariDataSource ds = createDataSource(dbUrl, "tenant-" + id);
+            runSchemaRepair(ds, id);
+            return ds;
         });
+    }
+
+    /**
+     * Auto-repair: add missing columns to existing tenant tables.
+     * Idempotent — safe to run every time a DS is created.
+     */
+    private void runSchemaRepair(HikariDataSource ds, Long orgId) {
+        String repairSQL = """
+            -- tickets table
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS billing_panel_id BIGINT;
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS agent_service_charges DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS other_charges DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS passenger_service_fee DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS user_development_charges DECIMAL(10,2);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sac_code_air VARCHAR(20);
+            ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sac_code_agent VARCHAR(20);
+            -- billing_panels table
+            ALTER TABLE billing_panels ADD COLUMN IF NOT EXISTS company_id BIGINT;
+            ALTER TABLE billing_panels ADD COLUMN IF NOT EXISTS invoice_id BIGINT;
+            -- gst_config table
+            ALTER TABLE gst_config ADD COLUMN IF NOT EXISTS service_charge_per_ticket DECIMAL(10,2) DEFAULT 0;
+            """;
+        try (Connection conn = ds.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(repairSQL);
+            log.info("✓ Schema repair completed for org {}", orgId);
+        } catch (Exception e) {
+            log.warn("Schema repair skipped for org {} (tables may not exist yet): {}", orgId, e.getMessage());
+        }
     }
 
     /**

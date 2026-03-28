@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Card, Form, Input, Button, InputNumber, Divider, message, Spin } from 'antd';
-import { Settings, Percent, Building2, Server } from 'lucide-react';
+import { Settings, IndianRupee, Building2, Server } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
 
@@ -17,7 +17,7 @@ const SystemSettings = () => {
     },
   });
 
-  // Fetch GST config
+  // Fetch GST / Billing config
   const { data: gstConfig, isLoading: gstLoading } = useQuery({
     queryKey: ['gstConfig'],
     queryFn: async () => {
@@ -33,9 +33,9 @@ const SystemSettings = () => {
         agencyName: systemConfig?.agencyName || '',
         gstin: systemConfig?.gstin || '',
         address: systemConfig?.address || '',
-        cgstRate: gstConfig?.cgstRate || 9,
-        sgstRate: gstConfig?.sgstRate || 9,
-        igstRate: systemConfig?.igstRate || '',
+        serviceChargePerTicket: gstConfig?.serviceChargePerTicket || 0,
+        cgstRate: gstConfig?.cgstRate || 0,
+        sgstRate: gstConfig?.sgstRate || 0,
         smtpHost: systemConfig?.smtpHost || '',
         smtpPort: systemConfig?.smtpPort ? Number(systemConfig.smtpPort) : undefined,
         smtpUsername: systemConfig?.smtpUsername || '',
@@ -51,7 +51,6 @@ const SystemSettings = () => {
       if (values.agencyName) configPayload['agencyName'] = values.agencyName;
       if (values.gstin) configPayload['gstin'] = values.gstin;
       if (values.address) configPayload['address'] = values.address;
-      if (values.igstRate !== undefined) configPayload['igstRate'] = String(values.igstRate);
       if (values.smtpHost) configPayload['smtpHost'] = values.smtpHost;
       if (values.smtpPort !== undefined) configPayload['smtpPort'] = String(values.smtpPort);
       if (values.smtpUsername) configPayload['smtpUsername'] = values.smtpUsername;
@@ -59,13 +58,12 @@ const SystemSettings = () => {
 
       await api.put('/admin/system-config', configPayload);
 
-      // Save GST config
-      if (values.cgstRate !== undefined && values.sgstRate !== undefined) {
-        await api.put('/admin/gst-config', {
-          cgstRate: values.cgstRate,
-          sgstRate: values.sgstRate,
-        });
-      }
+      // Save GST / Billing config
+      await api.put('/admin/gst-config', {
+        cgstRate: values.cgstRate,
+        sgstRate: values.sgstRate,
+        serviceChargePerTicket: values.serviceChargePerTicket,
+      });
     },
     onSuccess: () => {
       message.success('System settings updated successfully.');
@@ -87,7 +85,7 @@ const SystemSettings = () => {
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-3xl font-serif text-brand-dark mb-1">System Settings</h1>
-        <p className="text-gray-500">Configure agency defaults, GST rates, and SMTP configurations.</p>
+        <p className="text-gray-500">Configure agency defaults, billing charges, and SMTP configurations.</p>
       </div>
 
       <Form
@@ -109,17 +107,17 @@ const SystemSettings = () => {
           </div>
         </Card>
 
-        <Card title={<span className="flex items-center gap-2 font-serif text-lg"><Percent size={18}/> Global GST Configuration</span>} className="mb-6">
-          <p className="text-gray-500 text-sm mb-4">These rates will apply to all newly generated invoices. Ensure changes comply with current tax laws.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-            <Form.Item label="Default CGST (%)" name="cgstRate" rules={[{ required: true }]}>
-              <InputNumber className="w-full" min={0} max={100} step={0.1} />
+        <Card title={<span className="flex items-center gap-2 font-serif text-lg"><IndianRupee size={18}/> Billing Configuration (₹ per Ticket)</span>} className="mb-6">
+          <p className="text-gray-500 text-sm mb-4">These flat ₹ amounts will be applied to each ticket during extraction and billing. Update these to change how new tickets are calculated.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6">
+            <Form.Item label="Service Charge per Ticket (₹)" name="serviceChargePerTicket" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} step={10} prefix="₹" />
             </Form.Item>
-            <Form.Item label="Default SGST (%)" name="sgstRate" rules={[{ required: true }]}>
-              <InputNumber className="w-full" min={0} max={100} step={0.1} />
+            <Form.Item label="CGST per Ticket (₹)" name="cgstRate" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} step={1} prefix="₹" />
             </Form.Item>
-            <Form.Item label="Default IGST (%)" name="igstRate">
-              <InputNumber className="w-full" min={0} max={100} step={0.1} />
+            <Form.Item label="SGST per Ticket (₹)" name="sgstRate" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} step={1} prefix="₹" />
             </Form.Item>
           </div>
         </Card>

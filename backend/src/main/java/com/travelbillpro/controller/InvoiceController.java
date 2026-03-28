@@ -64,6 +64,15 @@ public class InvoiceController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return new ResponseEntity<>(invoiceService.generateInvoice(request, userDetails.getUser()), HttpStatus.CREATED);
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BILLING_STAFF')")
+    public ResponseEntity<InvoiceDto.InvoiceResponse> updateInvoice(
+            @PathVariable Long id,
+            @Valid @RequestBody InvoiceDto.UpdateInvoiceRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(invoiceService.updateInvoice(id, request, userDetails.getUser()));
+    }
     
     @PostMapping("/{id}/mark-sent")
     @PreAuthorize("hasAnyRole('ADMIN', 'BILLING_STAFF')")

@@ -267,11 +267,12 @@ public class TenantProvisioningService {
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- GST Config
+            -- GST / Billing Config
             CREATE TABLE IF NOT EXISTS gst_config (
                 id BIGSERIAL PRIMARY KEY,
-                cgst_rate DECIMAL(5,2) NOT NULL,
-                sgst_rate DECIMAL(5,2) NOT NULL,
+                cgst_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+                sgst_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+                service_charge_per_ticket DECIMAL(10,2) DEFAULT 0,
                 effective_from DATE NOT NULL,
                 created_by BIGINT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -310,10 +311,12 @@ public class TenantProvisioningService {
             CREATE TABLE IF NOT EXISTS billing_panels (
                 id BIGSERIAL PRIMARY KEY,
                 label VARCHAR(255) NOT NULL,
+                company_id BIGINT NOT NULL REFERENCES companies(id),
                 description TEXT,
                 billing_month VARCHAR(7),
-                status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+                status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
                 total_amount DECIMAL(12,2) DEFAULT 0,
+                invoice_id BIGINT REFERENCES invoices(id),
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 created_by BIGINT
@@ -404,6 +407,7 @@ public class TenantProvisioningService {
             END $$;
 
             -- Part 2: Add missing columns to existing tables (idempotent)
+            -- tickets table
             ALTER TABLE tickets ADD COLUMN IF NOT EXISTS billing_panel_id BIGINT;
             ALTER TABLE tickets ADD COLUMN IF NOT EXISTS agent_service_charges DECIMAL(10,2);
             ALTER TABLE tickets ADD COLUMN IF NOT EXISTS other_charges DECIMAL(10,2);
@@ -412,6 +416,11 @@ public class TenantProvisioningService {
             ALTER TABLE tickets ADD COLUMN IF NOT EXISTS user_development_charges DECIMAL(10,2);
             ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sac_code_air VARCHAR(20);
             ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sac_code_agent VARCHAR(20);
+            -- billing_panels table
+            ALTER TABLE billing_panels ADD COLUMN IF NOT EXISTS company_id BIGINT;
+            ALTER TABLE billing_panels ADD COLUMN IF NOT EXISTS invoice_id BIGINT;
+            -- gst_config table
+            ALTER TABLE gst_config ADD COLUMN IF NOT EXISTS service_charge_per_ticket DECIMAL(10,2) DEFAULT 0;
             """;
     }
 

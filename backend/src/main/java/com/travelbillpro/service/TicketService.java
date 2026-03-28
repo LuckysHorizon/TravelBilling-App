@@ -248,16 +248,25 @@ public class TicketService {
             }
         }
 
-        // Fares — no service tax, grand total = base fare
+        // Fares — apply billing config from system settings
         BigDecimal baseFare = decimal(record, "base_fare");
+        if (baseFare == null) baseFare = BigDecimal.ZERO;
         ticket.setBaseFare(baseFare);
-        ticket.setTotalAmount(baseFare); // total = base (no tax)
         ticket.setAiConfidence(decimal(record, "confidence"));
 
-        // No service tax
-        ticket.setServiceCharge(BigDecimal.ZERO);
-        ticket.setCgst(BigDecimal.ZERO);
-        ticket.setSgst(BigDecimal.ZERO);
+        // Look up billing config for flat ₹ amounts
+        GstConfig billingConfig = gstConfigRepository.findActiveConfig().orElse(null);
+        BigDecimal serviceCharge = billingConfig != null && billingConfig.getServiceChargePerTicket() != null
+                ? billingConfig.getServiceChargePerTicket() : BigDecimal.ZERO;
+        BigDecimal cgst = billingConfig != null && billingConfig.getCgstRate() != null
+                ? billingConfig.getCgstRate() : BigDecimal.ZERO;
+        BigDecimal sgst = billingConfig != null && billingConfig.getSgstRate() != null
+                ? billingConfig.getSgstRate() : BigDecimal.ZERO;
+
+        ticket.setServiceCharge(serviceCharge);
+        ticket.setCgst(cgst);
+        ticket.setSgst(sgst);
+        ticket.setTotalAmount(baseFare.add(serviceCharge).add(cgst).add(sgst));
 
         // System fields
         ticket.setFilePath(filePath);
@@ -339,11 +348,20 @@ public class TicketService {
         ticket.setOperatorName(request.getOperatorName());
         ticket.setBaseFare(request.getBaseFare());
 
-        // No service tax — grand total = base fare
-        ticket.setServiceCharge(BigDecimal.ZERO);
-        ticket.setCgst(BigDecimal.ZERO);
-        ticket.setSgst(BigDecimal.ZERO);
-        ticket.setTotalAmount(request.getBaseFare());
+        // Apply flat ₹ billing config values
+        GstConfig billingConfig = gstConfigRepository.findActiveConfig().orElse(null);
+        BigDecimal serviceCharge = billingConfig != null && billingConfig.getServiceChargePerTicket() != null
+                ? billingConfig.getServiceChargePerTicket() : BigDecimal.ZERO;
+        BigDecimal cgst = billingConfig != null && billingConfig.getCgstRate() != null
+                ? billingConfig.getCgstRate() : BigDecimal.ZERO;
+        BigDecimal sgst = billingConfig != null && billingConfig.getSgstRate() != null
+                ? billingConfig.getSgstRate() : BigDecimal.ZERO;
+
+        ticket.setServiceCharge(serviceCharge);
+        ticket.setCgst(cgst);
+        ticket.setSgst(sgst);
+        BigDecimal base = request.getBaseFare() != null ? request.getBaseFare() : BigDecimal.ZERO;
+        ticket.setTotalAmount(base.add(serviceCharge).add(cgst).add(sgst));
 
         ticket.setStatus(TicketStatus.APPROVED);
 

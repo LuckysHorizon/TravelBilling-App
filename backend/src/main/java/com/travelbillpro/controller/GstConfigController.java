@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class GstConfigController {
             result.put("id", config.getId());
             result.put("cgstRate", config.getCgstRate());
             result.put("sgstRate", config.getSgstRate());
+            result.put("serviceChargePerTicket", config.getServiceChargePerTicket());
             result.put("effectiveFrom", config.getEffectiveFrom());
         }
         return ResponseEntity.ok(result);
@@ -42,12 +44,22 @@ public class GstConfigController {
         User user = userDetails.getUser();
 
         GstConfig config = new GstConfig();
-        config.setCgstRate(new java.math.BigDecimal(updates.get("cgstRate").toString()));
-        config.setSgstRate(new java.math.BigDecimal(updates.get("sgstRate").toString()));
+        config.setCgstRate(toBigDecimal(updates.get("cgstRate"), BigDecimal.ZERO));
+        config.setSgstRate(toBigDecimal(updates.get("sgstRate"), BigDecimal.ZERO));
+        config.setServiceChargePerTicket(toBigDecimal(updates.get("serviceChargePerTicket"), BigDecimal.ZERO));
         config.setEffectiveFrom(LocalDate.now());
         config.setCreatedById(user.getId());
         gstConfigRepository.save(config);
 
         return getCurrentGstConfig();
+    }
+
+    private BigDecimal toBigDecimal(Object val, BigDecimal fallback) {
+        if (val == null) return fallback;
+        try {
+            return new BigDecimal(val.toString());
+        } catch (Exception e) {
+            return fallback;
+        }
     }
 }

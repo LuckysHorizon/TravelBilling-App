@@ -131,6 +131,49 @@ public class InvoiceService {
 
         return mapToResponse(savedInvoice);
     }
+
+    /**
+     * Update invoice totals (service charge, CGST, SGST, grand total).
+     * Only allowed on DRAFT or GENERATED invoices.
+     * Regenerates PDF after update.
+     */
+    @Transactional
+    public InvoiceDto.InvoiceResponse updateInvoice(Long id, InvoiceDto.UpdateInvoiceRequest request, User user) {
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("Invoice not found", "INVOICE_NOT_FOUND", HttpStatus.NOT_FOUND));
+
+        if (invoice.getStatus() != InvoiceStatus.DRAFT && invoice.getStatus() != InvoiceStatus.GENERATED) {
+            throw new BusinessException("Cannot edit a sent or paid invoice", "INVOICE_LOCKED", HttpStatus.FORBIDDEN);
+        }
+
+        InvoiceDto.InvoiceResponse oldValue = mapToResponse(invoice);
+
+        if (request.getServiceCharge() != null) invoice.setServiceCharge(request.getServiceCharge());
+        if (request.getCgstTotal() != null) invoice.setCgstTotal(request.getCgstTotal());
+        if (request.getSgstTotal() != null) invoice.setSgstTotal(request.getSgstTotal());
+        if (request.getGrandTotal() != null) invoice.setGrandTotal(request.getGrandTotal());
+        if (request.getDueDate() != null) invoice.setDueDate(request.getDueDate());
+
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        // Regenerate PDF with updated values
+        try {
+            List<Ticket> tickets = ticketRepository.findTicketsByInvoiceId(savedInvoice.getId());
+            byte[] pdfBytes = invoiceGeneratorService.generatePdf(savedInvoice, tickets);
+            String filePath = fileStorageService.storeInvoiceFile(
+                    savedInvoice.getCompany().getId(),
+                    savedInvoice.getInvoiceNumber(),
+                    pdfBytes, "pdf");
+            savedInvoice.setPdfFilePath(filePath);
+            savedInvoice.setStatus(InvoiceStatus.GENERATED);
+            invoiceRepository.save(savedInvoice);
+        } catch (Exception e) {
+            log.warn("Failed to regenerate PDF after invoice edit: {}", e.getMessage());
+        }
+
+        auditService.logAction("INVOICE", savedInvoice.getId(), "UPDATED", oldValue, mapToResponse(savedInvoice), user);
+        return mapToResponse(savedInvoice);
+    }
     
     @Transactional
     public void markAsSent(Long id, User user) {

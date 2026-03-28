@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Dropdown, message, Tooltip } from 'antd';
-import { Search, Download, Mail, FileSpreadsheet, FileText } from 'lucide-react';
+import { Card, Table, Button, Input, Tag, Tooltip, Modal, Form, InputNumber, message } from 'antd';
+import { Search, Download, Mail, FileSpreadsheet, FileText, Edit3 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosInstance';
@@ -8,6 +8,9 @@ import api from '../api/axiosInstance';
 const InvoiceList = () => {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [editForm] = Form.useForm();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -46,12 +49,70 @@ const InvoiceList = () => {
     },
   });
 
-  const handleDownloadPdf = (id: number) => {
-    window.open(`http://localhost:8080/api/invoices/${id}/download-pdf`, '_blank');
+  const updateInvoiceMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: number; values: any }) => {
+      const { data } = await api.put(`/invoices/${id}`, values);
+      return data;
+    },
+    onSuccess: () => {
+      message.success('Invoice updated and PDF regenerated');
+      setEditModalOpen(false);
+      setEditingInvoice(null);
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+    onError: (err: any) => {
+      message.error(err.response?.data?.message || 'Failed to update invoice');
+    },
+  });
+
+  // ─── Authenticated blob download (fixes HTML download issue) ───
+  const handleDownloadPdf = async (id: number) => {
+    try {
+      const response = await api.get(`/invoices/${id}/download-pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      message.error('Failed to download PDF');
+    }
   };
 
-  const handleDownloadExcel = (id: number) => {
-    window.open(`http://localhost:8080/api/invoices/${id}/download-excel`, '_blank');
+  const handleDownloadExcel = async (id: number) => {
+    try {
+      const response = await api.get(`/invoices/${id}/download-excel`, { responseType: 'blob' });
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${id}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      message.error('Failed to download Excel');
+    }
+  };
+
+  const handleEditInvoice = (record: any) => {
+    setEditingInvoice(record);
+    editForm.setFieldsValue({
+      serviceCharge: record.serviceCharge,
+      cgstTotal: record.cgstTotal,
+      sgstTotal: record.sgstTotal,
+      grandTotal: record.grandTotal,
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = () => {
+    editForm.validateFields().then((values) => {
+      updateInvoiceMutation.mutate({ id: editingInvoice.id, values });
+    });
   };
 
   const getStatusTag = (status: string) => {
@@ -64,6 +125,11 @@ const InvoiceList = () => {
       default: return <Tag color="default">{status}</Tag>;
     }
   };
+
+  const formatCurrency = (amount: number | null) =>
+    amount != null
+      ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)
+      : '—';
 
   const columns = [
     {
@@ -100,9 +166,7 @@ const InvoiceList = () => {
       title: 'Grand Total',
       dataIndex: 'grandTotal',
       key: 'amount',
-      render: (amount: number) => amount != null 
-        ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)
-        : '—'
+      render: (amount: number) => formatCurrency(amount)
     },
     {
       title: 'Status',
@@ -113,7 +177,7 @@ const InvoiceList = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 200,
+      width: 240,
       render: (record: any) => (
         <div className="flex items-center gap-1">
           <Tooltip title="Download PDF">
@@ -132,6 +196,17 @@ const InvoiceList = () => {
               size="small"
             />
           </Tooltip>
+          {/* Edit button — only for DRAFT/GENERATED */}
+          {(record.status === 'DRAFT' || record.status === 'GENERATED') && (
+            <Tooltip title="Edit Invoice Totals">
+              <Button 
+                type="text" 
+                icon={<Edit3 size={15} className="text-orange-500 hover:text-orange-700" />} 
+                onClick={() => handleEditInvoice(record)}
+                size="small"
+              />
+            </Tooltip>
+          )}
           {record.status !== 'PAID' && (
             <>
               <Tooltip title="Send Email">
@@ -165,7 +240,7 @@ const InvoiceList = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-serif text-brand-dark mb-1">Invoices</h1>
-          <p className="text-gray-500">View, download, and manage billed invoices.</p>
+          <p className="text-gray-500">View, download, edit, and manage billed invoices.</p>
         </div>
       </div>
 
@@ -195,6 +270,37 @@ const InvoiceList = () => {
           }}
         />
       </Card>
+
+      {/* ─── Edit Invoice Totals Modal ─── */}
+      <Modal
+        title="Edit Invoice Totals"
+        open={editModalOpen}
+        onCancel={() => { setEditModalOpen(false); setEditingInvoice(null); }}
+        onOk={handleEditSubmit}
+        confirmLoading={updateInvoiceMutation.isPending}
+        okText="Save & Regenerate PDF"
+        width={520}
+      >
+        <p className="text-gray-500 text-sm mb-4">
+          Modify the invoice totals below. The PDF will be automatically regenerated.
+        </p>
+        <Form form={editForm} layout="vertical">
+          <div className="grid grid-cols-2 gap-x-4">
+            <Form.Item label="Service Charge (₹)" name="serviceCharge" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} step={10} prefix="₹" />
+            </Form.Item>
+            <Form.Item label="CGST Total (₹)" name="cgstTotal" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} step={1} prefix="₹" />
+            </Form.Item>
+            <Form.Item label="SGST Total (₹)" name="sgstTotal" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} step={1} prefix="₹" />
+            </Form.Item>
+            <Form.Item label="Grand Total (₹)" name="grandTotal" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} step={1} prefix="₹" />
+            </Form.Item>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

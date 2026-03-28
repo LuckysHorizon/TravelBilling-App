@@ -23,6 +23,19 @@ public class InvoiceDto {
         private LocalDate endDate;
     }
 
+    /**
+     * For editing invoice totals (service charge, CGST, SGST, grand total).
+     * Only allowed on DRAFT or GENERATED invoices.
+     */
+    @Data
+    public static class UpdateInvoiceRequest {
+        private BigDecimal serviceCharge;
+        private BigDecimal cgstTotal;
+        private BigDecimal sgstTotal;
+        private BigDecimal grandTotal;
+        private LocalDate dueDate;
+    }
+
     @Data
     public static class InvoiceResponse {
         private Long id;

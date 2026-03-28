@@ -18,11 +18,17 @@ public class GstConfig {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "cgst_rate", nullable = false, precision = 5, scale = 2)
+    /** Flat ₹ CGST per ticket */
+    @Column(name = "cgst_rate", nullable = false, precision = 10, scale = 2)
     private BigDecimal cgstRate;
 
-    @Column(name = "sgst_rate", nullable = false, precision = 5, scale = 2)
+    /** Flat ₹ SGST per ticket */
+    @Column(name = "sgst_rate", nullable = false, precision = 10, scale = 2)
     private BigDecimal sgstRate;
+
+    /** Flat ₹ service charge per ticket */
+    @Column(name = "service_charge_per_ticket", precision = 10, scale = 2)
+    private BigDecimal serviceChargePerTicket;
 
     @Column(name = "effective_from", nullable = false)
     private LocalDate effectiveFrom;
