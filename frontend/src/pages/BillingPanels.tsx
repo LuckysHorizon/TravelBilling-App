@@ -129,6 +129,10 @@ const BillingPanels = () => {
     { title: 'Passenger', dataIndex: 'passengerName', key: 'passenger' },
     { title: 'Route', key: 'route', render: (r: any) => `${r.origin || ''} → ${r.destination || ''}` },
     { title: 'Base Fare', dataIndex: 'baseFare', key: 'fare', render: (a: number) => formatCurrency(a) },
+    { title: 'Service Chg', dataIndex: 'serviceCharge', key: 'sc', render: (a: number) => formatCurrency(a) },
+    { title: 'CGST', dataIndex: 'cgst', key: 'cgst', render: (a: number) => formatCurrency(a) },
+    { title: 'SGST', dataIndex: 'sgst', key: 'sgst', render: (a: number) => formatCurrency(a) },
+    { title: 'Total', dataIndex: 'totalAmount', key: 'total', render: (a: number) => <strong>{formatCurrency(a)}</strong> },
   ];
 
   return (

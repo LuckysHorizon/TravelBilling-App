@@ -1,6 +1,9 @@
 package com.travelbillpro.service;
 
 import com.travelbillpro.dto.EmployeeBillingDto;
+import com.travelbillpro.entity.SystemConfig;
+import com.travelbillpro.repository.SystemConfigRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -12,18 +15,42 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class EmployeeInvoiceExcelService {
 
-    private static final String COMPANY_NAME = "RAMNET SOLUTIONS";
-    private static final String COMPANY_ADDR_LINE1 = "Shop No. 3134, Road No. 2, MIG PHASE II,";
-    private static final String COMPANY_ADDR_LINE2 = "BHEL, Hyderabad - 502032.";
-    private static final String GSTIN = "36AMWPB0052D1ZE";
-    private static final String PAN = "AMWPB0052D";
+    private final SystemConfigRepository systemConfigRepository;
+
+    /** Load all system_config rows into a simple key→value map */
+    private Map<String, String> loadOrgConfig() {
+        Map<String, String> cfg = new HashMap<>();
+        for (SystemConfig sc : systemConfigRepository.findAll()) {
+            cfg.put(sc.getKey(), sc.getValue());
+        }
+        return cfg;
+    }
+
+    private String cfg(Map<String, String> m, String key, String fallback) {
+        String v = m.get(key);
+        return (v != null && !v.isBlank()) ? v : fallback;
+    }
 
     public byte[] generateExcel(EmployeeBillingDto.InvoiceResponse inv) {
+        Map<String, String> org = loadOrgConfig();
+        String ORG_NAME      = cfg(org, "agencyName",       "RAMNET SOLUTIONS");
+        String ORG_ADDR1     = cfg(org, "orgAddressLine1",  "Shop No. 3134, Road No. 2, MIG PHASE II,");
+        String ORG_ADDR2     = cfg(org, "orgAddressLine2",  "BHEL, Hyderabad - 502032.");
+        String ORG_GSTIN     = cfg(org, "gstin",            "36AMWPB0052D1ZE");
+        String ORG_PAN       = cfg(org, "panNumber",        "AMWPB0052D");
+        String BANK_ACC_NAME = cfg(org, "bankAccountName",  "RAMNETSOLUTIONS");
+        String BANK_ACC_NO   = cfg(org, "bankAccountNumber","32602154473");
+        String BANK_NAME     = cfg(org, "bankName",         "SBI");
+        String BANK_BRANCH   = cfg(org, "bankBranch",       "TELLAPUR");
+        String BANK_IFSC     = cfg(org, "bankIfsc",         "SBIN0013071");
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
             Sheet s = wb.createSheet("Tax Invoice");
 
@@ -106,19 +133,19 @@ public class EmployeeInvoiceExcelService {
             // === ROW 0 (Row 1): RAMNET SOLUTIONS + TAX INVOICE ===
             r = s.createRow(rn++);
             r.setHeightInPoints(22);
-            cell(r, 0, COMPANY_NAME, bold12);
+            cell(r, 0, ORG_NAME, bold12);
             merge(s, 0, 0, 0, 2);
             cell(r, 3, "TAX INVOICE", title16);
             merge(s, 0, 0, 3, 5);
 
             // === ROW 1 (Row 2): Address line 1 ===
             r = s.createRow(rn++);
-            cell(r, 0, COMPANY_ADDR_LINE1, normal);
+            cell(r, 0, ORG_ADDR1, normal);
             merge(s, 1, 1, 0, 2);
 
             // === ROW 2 (Row 3): Address line 2 ===
             r = s.createRow(rn++);
-            cell(r, 0, COMPANY_ADDR_LINE2, normal);
+            cell(r, 0, ORG_ADDR2, normal);
             merge(s, 2, 2, 0, 2);
 
             // Header outer border (rows 0-2, cols 0-5)
@@ -129,8 +156,8 @@ public class EmployeeInvoiceExcelService {
             // === ROW 3 (Row 4): Customer details + GSTIN + PAN ===
             r = s.createRow(rn++);
             cell(r, 0, "Customer details:", boldUndl);
-            cell(r, 3, "GSTIN: " + GSTIN, normal);
-            cell(r, 5, "PAN No. : " + PAN, normal);
+            cell(r, 3, "GSTIN: " + ORG_GSTIN, normal);
+            cell(r, 5, "PAN No. : " + ORG_PAN, normal);
 
             // === ROW 4 (Row 5): Company name + Invoice No ===
             r = s.createRow(rn++);
@@ -250,21 +277,21 @@ public class EmployeeInvoiceExcelService {
 
             // === ROW 24: Bank line 1 + SGST ===
             r = s.createRow(rn++);
-            cell(r, 0, "A/C HOLDER NAME: RAMNETSOLUTIONS", normal);
+            cell(r, 0, "A/C HOLDER NAME: " + BANK_ACC_NAME, normal);
             cell(r, 3, "SGST", boldNormal);
             numCell(r, 4, sgst, numRight);
 
             // === ROW 25: Bank line 2 ===
             r = s.createRow(rn++);
-            cell(r, 0, "CURRENT A/C NO.: 32602154473", normal);
+            cell(r, 0, "CURRENT A/C NO.: " + BANK_ACC_NO, normal);
 
             // === ROW 26: Bank line 3 ===
             r = s.createRow(rn++);
-            cell(r, 0, "BANK NAME: SBI, BRANCH: TELLAPUR", normal);
+            cell(r, 0, "BANK NAME: " + BANK_NAME + ", BRANCH: " + BANK_BRANCH, normal);
 
             // === ROW 27: IFSC + Grand Total ===
             r = s.createRow(rn++);
-            cell(r, 0, "IFSC : SBIN0013071", normal);
+            cell(r, 0, "IFSC : " + BANK_IFSC, normal);
             cell(r, 3, "Grand Total", boldNormal);
             // Grand total with top border
             CellStyle gtStyle = mkStyle(wb, true, 10, false, false);
@@ -290,7 +317,7 @@ public class EmployeeInvoiceExcelService {
             r = s.createRow(rn++);
             cell(r, 0, "Air Travel and related Charges :- Includes all Charges related to air transportation of passengers", normal);
             merge(s, rn - 1, rn - 1, 0, 3);
-            cell(r, 4, "For RAMNET SOLUTIONS", boldRight);
+            cell(r, 4, "For " + ORG_NAME, boldRight);
             merge(s, rn - 1, rn - 1, 4, 5);
 
             r = s.createRow(rn++);
@@ -317,155 +344,208 @@ public class EmployeeInvoiceExcelService {
     }
 
     /**
-     * Generate a styled HTML invoice (for PDF download or in-browser preview).
+     * Generate a real PDF invoice using iText, matching the Tax Invoice template.
+     * All org details are loaded from system_config.
      */
     public byte[] generatePdf(EmployeeBillingDto.InvoiceResponse inv) {
-        try {
-            return generateHtmlInvoice(inv).getBytes("UTF-8");
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate PDF", e);
-        }
-    }
+        Map<String, String> org = loadOrgConfig();
+        String ORG_NAME      = cfg(org, "agencyName",       "RAMNET SOLUTIONS");
+        String ORG_ADDR1     = cfg(org, "orgAddressLine1",  "Shop No. 3134, Road No. 2, MIG PHASE II,");
+        String ORG_ADDR2     = cfg(org, "orgAddressLine2",  "BHEL, Hyderabad - 502032.");
+        String ORG_GSTIN     = cfg(org, "gstin",            "36AMWPB0052D1ZE");
+        String ORG_PAN       = cfg(org, "panNumber",        "AMWPB0052D");
+        String BANK_ACC_NAME = cfg(org, "bankAccountName",  "RAMNETSOLUTIONS");
+        String BANK_ACC_NO   = cfg(org, "bankAccountNumber","32602154473");
+        String BANK_NAME     = cfg(org, "bankName",         "SBI");
+        String BANK_BRANCH   = cfg(org, "bankBranch",       "TELLAPUR");
+        String BANK_IFSC     = cfg(org, "bankIfsc",         "SBIN0013071");
+        try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+            com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
+            com.itextpdf.kernel.pdf.PdfDocument pdf = new com.itextpdf.kernel.pdf.PdfDocument(writer);
+            com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdf, com.itextpdf.kernel.geom.PageSize.A4);
+            doc.setMargins(30, 36, 30, 36);
 
-    private String generateHtmlInvoice(EmployeeBillingDto.InvoiceResponse inv) {
-        // Parse line items
-        BigDecimal airTravel1 = BigDecimal.ZERO, airTravel2 = BigDecimal.ZERO;
-        BigDecimal psf = BigDecimal.ZERO, udc = BigDecimal.ZERO;
-        BigDecimal agentCharges = BigDecimal.ZERO, otherCharges = BigDecimal.ZERO, discount = BigDecimal.ZERO;
-        String sacAir = "996425", sacAgent = "998551";
+            com.itextpdf.layout.borders.Border thinBorder = new com.itextpdf.layout.borders.SolidBorder(0.5f);
 
-        if (inv.getLineItems() != null) {
-            for (EmployeeBillingDto.LineItemResponse li : inv.getLineItems()) {
-                String p = li.getParticulars() != null ? li.getParticulars().toLowerCase() : "";
-                BigDecimal tot = li.getTotal() != null ? li.getTotal() : BigDecimal.ZERO;
-                BigDecimal tv = li.getTaxableValue() != null ? li.getTaxableValue() : BigDecimal.ZERO;
-                BigDecimal ntv = li.getNonTaxableValue() != null ? li.getNonTaxableValue() : BigDecimal.ZERO;
-                if (p.contains("air travel") && airTravel1.compareTo(BigDecimal.ZERO) == 0) {
-                    airTravel1 = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
-                } else if (p.contains("air travel")) {
-                    airTravel2 = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
-                } else if (p.contains("passenger service")) {
-                    psf = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
-                } else if (p.contains("user") && p.contains("development")) {
-                    udc = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
-                } else if (p.contains("agent")) {
-                    agentCharges = tv.compareTo(BigDecimal.ZERO) != 0 ? tv : tot;
-                } else if (p.contains("discount")) {
-                    discount = tot.abs();
-                } else if (p.contains("other")) {
-                    otherCharges = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
-                }
-                if (li.getSacCode() != null && !li.getSacCode().isEmpty()) {
-                    if (p.contains("agent")) sacAgent = li.getSacCode();
-                    else sacAir = li.getSacCode();
+            // Parse line items into the 8 fixed rows
+            BigDecimal airTravel1 = BigDecimal.ZERO, airTravel2 = BigDecimal.ZERO;
+            BigDecimal psf = BigDecimal.ZERO, udc = BigDecimal.ZERO;
+            BigDecimal agentCharges = BigDecimal.ZERO, otherCharges = BigDecimal.ZERO, discount = BigDecimal.ZERO;
+            String sacAir = "996425", sacAgent = "998551";
+
+            if (inv.getLineItems() != null) {
+                for (EmployeeBillingDto.LineItemResponse li : inv.getLineItems()) {
+                    String p = li.getParticulars() != null ? li.getParticulars().toLowerCase() : "";
+                    BigDecimal tot = li.getTotal() != null ? li.getTotal() : BigDecimal.ZERO;
+                    BigDecimal tv = li.getTaxableValue() != null ? li.getTaxableValue() : BigDecimal.ZERO;
+                    BigDecimal ntv = li.getNonTaxableValue() != null ? li.getNonTaxableValue() : BigDecimal.ZERO;
+                    if (p.contains("air travel") && airTravel1.compareTo(BigDecimal.ZERO) == 0) {
+                        airTravel1 = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
+                    } else if (p.contains("air travel")) {
+                        airTravel2 = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
+                    } else if (p.contains("passenger service")) {
+                        psf = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
+                    } else if (p.contains("user") && p.contains("development")) {
+                        udc = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
+                    } else if (p.contains("agent")) {
+                        agentCharges = tv.compareTo(BigDecimal.ZERO) != 0 ? tv : tot;
+                    } else if (p.contains("discount")) {
+                        discount = tot.abs();
+                    } else if (p.contains("other")) {
+                        otherCharges = ntv.compareTo(BigDecimal.ZERO) != 0 ? ntv : tot;
+                    }
+                    if (li.getSacCode() != null && !li.getSacCode().isEmpty()) {
+                        if (p.contains("agent")) sacAgent = li.getSacCode();
+                        else sacAir = li.getSacCode();
+                    }
                 }
             }
+
+            BigDecimal nonTaxableTotal = airTravel1.add(airTravel2).add(psf).add(udc).add(otherCharges);
+            BigDecimal taxableTotal = agentCharges;
+            BigDecimal subTotal = nonTaxableTotal.add(taxableTotal).subtract(discount);
+            BigDecimal cgstRate = inv.getCgstRate() != null ? inv.getCgstRate() : new BigDecimal("9");
+            BigDecimal sgstRate = inv.getSgstRate() != null ? inv.getSgstRate() : new BigDecimal("9");
+            BigDecimal cgst = agentCharges.multiply(cgstRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            BigDecimal sgst = agentCharges.multiply(sgstRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            BigDecimal grandTotal = subTotal.add(cgst).add(sgst);
+            String words = inv.getTotalInWords() != null ? inv.getTotalInWords() : EmployeeBillingService.convertToWords(grandTotal);
+
+            // ═══ HEADER ═══
+            com.itextpdf.layout.element.Table header = new com.itextpdf.layout.element.Table(
+                    com.itextpdf.layout.properties.UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
+            com.itextpdf.layout.element.Cell leftH = new com.itextpdf.layout.element.Cell()
+                    .add(new com.itextpdf.layout.element.Paragraph(ORG_NAME).setBold().setFontSize(14))
+                    .add(new com.itextpdf.layout.element.Paragraph(ORG_ADDR1).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph(ORG_ADDR2).setFontSize(9))
+                    .setBorder(thinBorder);
+            com.itextpdf.layout.element.Cell rightH = new com.itextpdf.layout.element.Cell()
+                    .add(new com.itextpdf.layout.element.Paragraph("TAX INVOICE").setBold().setFontSize(18)
+                            .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER))
+                    .setBorder(thinBorder);
+            header.addCell(leftH);
+            header.addCell(rightH);
+            doc.add(header);
+
+            // ═══ CUSTOMER + INVOICE META ═══
+            com.itextpdf.layout.element.Table info = new com.itextpdf.layout.element.Table(
+                    com.itextpdf.layout.properties.UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
+            String[] addrLines = splitAddress(safe(inv.getCompanyAddress()));
+            StringBuilder addrStr = new StringBuilder();
+            for (String al : addrLines) addrStr.append(al).append("\n");
+
+            com.itextpdf.layout.element.Cell custCell = new com.itextpdf.layout.element.Cell()
+                    .add(new com.itextpdf.layout.element.Paragraph("Customer details:").setBold().setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph(safe(inv.getCompanyName())).setBold().setFontSize(10))
+                    .add(new com.itextpdf.layout.element.Paragraph(addrStr.toString().trim()).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("CUSTOMER GSTIN: " + safe(inv.getCompanyGstin())).setBold().setFontSize(9))
+                    .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+
+            String dateStr = inv.getInvoiceDate() != null ? inv.getInvoiceDate().format(DateTimeFormatter.ofPattern("d.M.yyyy")) : "";
+            String dotStr = inv.getDateOfTravel() != null ? inv.getDateOfTravel().format(DateTimeFormatter.ofPattern("d.M.yyyy")) : "";
+            com.itextpdf.layout.element.Cell metaCell = new com.itextpdf.layout.element.Cell()
+                    .add(new com.itextpdf.layout.element.Paragraph("GSTIN: " + ORG_GSTIN + "   PAN No.: " + ORG_PAN).setFontSize(8))
+                    .add(new com.itextpdf.layout.element.Paragraph("INVOICE NO: " + safe(inv.getInvoiceNumber())).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("DATE: " + dateStr).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("Passenger Name: " + safe(inv.getPassengerName())).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("Mobile No. " + safe(inv.getMobile())).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("PNR: " + safe(inv.getPnr())).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("DATE OF TRAVEL: " + dotStr).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("FROM: " + safe(inv.getFromCity()) + "   TO: " + safe(inv.getToCity())).setFontSize(9))
+                    .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+            info.addCell(custCell);
+            info.addCell(metaCell);
+            doc.add(info);
+
+            // ═══ LINE ITEMS TABLE ═══
+            float[] colW = {3f, 1.2f, 1.5f, 1.8f, 1.5f};
+            com.itextpdf.layout.element.Table liTable = new com.itextpdf.layout.element.Table(
+                    com.itextpdf.layout.properties.UnitValue.createPercentArray(colW)).useAllAvailableWidth().setMarginTop(8);
+            String[] liHeaders = {"Particulars", "SAC Code", "Taxable Value", "Non Taxable/Exemp", "TOTAL"};
+            for (String lh : liHeaders) {
+                liTable.addHeaderCell(new com.itextpdf.layout.element.Cell()
+                        .add(new com.itextpdf.layout.element.Paragraph(lh).setBold().setFontSize(8)
+                                .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER))
+                        .setBorder(thinBorder).setPadding(3));
+            }
+
+            addLiRow(liTable, thinBorder, "Air Travel and related charges", sacAir, null, airTravel1, airTravel1);
+            addLiRow(liTable, thinBorder, "Air Travel and related charges", "", null, airTravel2, airTravel2);
+            addLiRow(liTable, thinBorder, "Passenger Service Fee", "", null, psf, psf);
+            addLiRow(liTable, thinBorder, "User Devolopment Charges", "", null, udc, udc);
+            addLiRow(liTable, thinBorder, "Agent service charges", sacAgent, agentCharges, null, agentCharges);
+            addLiRow(liTable, thinBorder, "Other charges", "", null, otherCharges, otherCharges);
+            BigDecimal discDisp = discount.compareTo(BigDecimal.ZERO) > 0 ? discount.negate() : BigDecimal.ZERO;
+            addLiRow(liTable, thinBorder, "Discount", "", null, discDisp, discDisp);
+
+            // TOTAL row
+            liTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("TOTAL").setBold().setFontSize(8)).setBorder(thinBorder).setPadding(3));
+            liTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("")).setBorder(thinBorder));
+            liTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(fmt(taxableTotal)).setBold().setFontSize(8).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(thinBorder).setPadding(3));
+            liTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(fmt(nonTaxableTotal.subtract(discount))).setBold().setFontSize(8).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(thinBorder).setPadding(3));
+            liTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(fmt(subTotal)).setBold().setFontSize(8).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(thinBorder).setPadding(3));
+            doc.add(liTable);
+
+            // ═══ BANK + TAX SUMMARY ═══
+            com.itextpdf.layout.element.Table bankTax = new com.itextpdf.layout.element.Table(
+                    com.itextpdf.layout.properties.UnitValue.createPercentArray(new float[]{1.4f, 0.6f})).useAllAvailableWidth().setMarginTop(8);
+            com.itextpdf.layout.element.Cell bankCell = new com.itextpdf.layout.element.Cell()
+                    .add(new com.itextpdf.layout.element.Paragraph("OUR BANK DETAILS:").setBold().setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("A/C HOLDER NAME: " + BANK_ACC_NAME).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("CURRENT A/C NO.: " + BANK_ACC_NO).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("BANK NAME: " + BANK_NAME + ", BRANCH: " + BANK_BRANCH).setFontSize(9))
+                    .add(new com.itextpdf.layout.element.Paragraph("IFSC : " + BANK_IFSC).setFontSize(9))
+                    .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+
+            com.itextpdf.layout.element.Table taxTable = new com.itextpdf.layout.element.Table(
+                    com.itextpdf.layout.properties.UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
+            taxTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("CGST").setBold().setFontSize(9)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            taxTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(fmt(cgst)).setFontSize(9).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            taxTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("SGST").setBold().setFontSize(9)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            taxTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(fmt(sgst)).setFontSize(9).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            taxTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("Grand Total").setBold().setFontSize(10)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER).setBorderTop(new com.itextpdf.layout.borders.SolidBorder(0.5f)));
+            taxTable.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(fmt(grandTotal)).setBold().setFontSize(10).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER).setBorderTop(new com.itextpdf.layout.borders.SolidBorder(0.5f)));
+
+            com.itextpdf.layout.element.Cell taxCell = new com.itextpdf.layout.element.Cell().add(taxTable).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+            bankTax.addCell(bankCell);
+            bankTax.addCell(taxCell);
+            doc.add(bankTax);
+
+            // ═══ TOTAL IN WORDS ═══
+            com.itextpdf.layout.element.Table wordsT = new com.itextpdf.layout.element.Table(1).useAllAvailableWidth().setMarginTop(4);
+            wordsT.addCell(new com.itextpdf.layout.element.Cell()
+                    .add(new com.itextpdf.layout.element.Paragraph("TOTAL INVOICE VALUE IN WORDS: " + words).setBold().setFontSize(9))
+                    .setBorder(thinBorder).setPadding(4));
+            doc.add(wordsT);
+
+            // ═══ FOOTER ═══
+            com.itextpdf.layout.element.Table footer = new com.itextpdf.layout.element.Table(
+                    com.itextpdf.layout.properties.UnitValue.createPercentArray(new float[]{3, 1})).useAllAvailableWidth().setMarginTop(8).setFontSize(8);
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("Air Travel and related Charges :- Includes all Charges related to air transportation of passengers")).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("For " + ORG_NAME).setBold().setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("Airport Charges :- Includes ADF, UDF and PSF collected on behalf of Airport Operator, as applicable")).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("")).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("Misc. Services :- Includes Charges of Lounge Assistance and Travel Certificate")).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("")).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("Meal :- Includes all prepaid meals purchased before travel")).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            footer.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph("Authorised Signatory").setBold().setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            doc.add(footer);
+
+            doc.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Failed to generate PDF invoice", e);
+            throw new RuntimeException("Failed to generate PDF invoice", e);
         }
-
-        BigDecimal nonTaxableTotal = airTravel1.add(airTravel2).add(psf).add(udc).add(otherCharges);
-        BigDecimal taxableTotal = agentCharges;
-        BigDecimal subTotal = nonTaxableTotal.add(taxableTotal).subtract(discount);
-        BigDecimal cgstRate = inv.getCgstRate() != null ? inv.getCgstRate() : new BigDecimal("9");
-        BigDecimal sgstRate = inv.getSgstRate() != null ? inv.getSgstRate() : new BigDecimal("9");
-        BigDecimal cgst = agentCharges.multiply(cgstRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
-        BigDecimal sgst = agentCharges.multiply(sgstRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
-        BigDecimal grandTotal = subTotal.add(cgst).add(sgst);
-        String words = inv.getTotalInWords() != null ? inv.getTotalInWords() : EmployeeBillingService.convertToWords(grandTotal);
-
-        String[] addrLines = splitAddress(safe(inv.getCompanyAddress()));
-
-        StringBuilder h = new StringBuilder();
-        h.append("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>");
-        h.append("*{margin:0;padding:0;box-sizing:border-box}");
-        h.append("body{font-family:'Calibri','Arial',sans-serif;font-size:11px;padding:20px;max-width:780px;margin:0 auto}");
-        h.append("table{border-collapse:collapse;width:100%}");
-        h.append("td,th{padding:3px 5px;vertical-align:top}");
-        h.append(".b{font-weight:bold}.u{text-decoration:underline}.r{text-align:right}.c{text-align:center}");
-        h.append(".bdr{border:1px solid #000}");
-        h.append(".bdr-b{border-bottom:1px solid #000}.bdr-l{border-left:1px solid #000}.bdr-r{border-right:1px solid #000}.bdr-t{border-top:1px solid #000}");
-        h.append(".title{font-size:18px;font-weight:bold;text-align:center;border:2px solid #000;padding:8px}");
-        h.append("@media print{body{padding:0}@page{size:A4;margin:10mm}}");
-        h.append("</style></head><body>");
-
-        // HEADER
-        h.append("<table><tr>");
-        h.append("<td width='50%' style='border:1px solid #000;border-right:none;padding:5px'>");
-        h.append("<div class='b' style='font-size:14px'>").append(COMPANY_NAME).append("</div>");
-        h.append("<div>").append(COMPANY_ADDR_LINE1).append("</div>");
-        h.append("<div>").append(COMPANY_ADDR_LINE2).append("</div>");
-        h.append("</td>");
-        h.append("<td width='50%' class='title'>TAX INVOICE</td>");
-        h.append("</tr></table>");
-
-        // LEFT: Customer + RIGHT: Invoice meta
-        h.append("<table><tr><td width='50%' style='vertical-align:top'>");
-        h.append("<div class='b u' style='margin-top:4px'>Customer details:</div>");
-        h.append("<div>").append(safe(inv.getCompanyName())).append("</div>");
-        for (String al : addrLines) h.append("<div>").append(al).append("</div>");
-        h.append("<div style='margin-top:4px' class='b'>CUSTOMER GSTIN: ").append(safe(inv.getCompanyGstin())).append("</div>");
-        h.append("</td><td width='50%' style='vertical-align:top'>");
-        h.append("<table>");
-        h.append("<tr><td>GSTIN: ").append(GSTIN).append("</td><td>PAN No.: ").append(PAN).append("</td></tr>");
-        h.append("<tr><td class='b'>INVOICE NO:</td><td class='bdr'>").append(safe(inv.getInvoiceNumber())).append("</td></tr>");
-        h.append("<tr><td class='b'>DATE:</td><td class='bdr'>").append(fmtDate(inv)).append("</td></tr>");
-        h.append("<tr><td class='b'>Passenger Name:</td><td>").append(safe(inv.getPassengerName())).append("</td></tr>");
-        h.append("<tr><td class='b'>Mobile No.</td><td>").append(safe(inv.getMobile())).append("</td></tr>");
-        h.append("<tr><td class='b'>PNR :</td><td>").append(safe(inv.getPnr())).append("</td></tr>");
-        h.append("<tr><td class='b'>DATE OF TRAVEL:</td><td>").append(inv.getDateOfTravel() != null ? inv.getDateOfTravel().format(DateTimeFormatter.ofPattern("d.M.yyyy")) : "").append("</td></tr>");
-        h.append("<tr><td class='b'>FROM:</td><td>").append(safe(inv.getFromCity())).append("</td><td>TO : ").append(safe(inv.getToCity())).append("</td></tr>");
-        h.append("</table></td></tr></table>");
-
-        // LINE ITEMS TABLE
-        h.append("<table style='margin-top:8px'>");
-        h.append("<tr class='b c'><th class='bdr'>Particulars</th><th class='bdr'>SAC code</th><th class='bdr'>Taxable Value</th><th class='bdr'>Non Taxable/Exemp</th><th class='bdr' colspan='2'>TOTAL</th></tr>");
-        liRow(h, "Air Travel and related charges", sacAir, null, airTravel1, airTravel1);
-        liRow(h, "Air Travel and related charges", "", null, airTravel2, airTravel2);
-        liRow(h, "Passenger Service Fee", "", null, psf, psf);
-        liRow(h, "User Devolopment Charges", "", null, udc, udc);
-        liRow(h, "Agent service charges", sacAgent, agentCharges, null, agentCharges);
-        liRow(h, "Other charges", "", null, otherCharges, otherCharges);
-        BigDecimal discDisp = discount.compareTo(BigDecimal.ZERO) > 0 ? discount.negate() : BigDecimal.ZERO;
-        liRow(h, "Discount", "", null, discDisp, discDisp);
-        h.append("<tr class='b'><td class='bdr'>TOTAL</td><td class='bdr'></td><td class='bdr r'>").append(fmt(taxableTotal))
-                .append("</td><td class='bdr r'>").append(fmt(nonTaxableTotal.subtract(discount)))
-                .append("</td><td class='bdr r' colspan='2'>").append(fmt(subTotal)).append("</td></tr>");
-        h.append("</table>");
-
-        // BANK + TAX SUMMARY
-        h.append("<table style='margin-top:8px'><tr><td width='60%' style='vertical-align:top'>");
-        h.append("<div class='b u'>OUR BANK DETAILS:</div>");
-        h.append("<div>A/C HOLDER NAME: RAMNETSOLUTIONS</div>");
-        h.append("<div>CURRENT A/C NO.: 32602154473</div>");
-        h.append("<div>BANK NAME: SBI, BRANCH: TELLAPUR</div>");
-        h.append("<div>IFSC : SBIN0013071</div>");
-        h.append("</td><td width='40%' style='vertical-align:top'>");
-        h.append("<table width='100%'>");
-        h.append("<tr><td class='b'>CGST</td><td class='r'>").append(fmt(cgst)).append("</td></tr>");
-        h.append("<tr><td class='b'>SGST</td><td class='r'>").append(fmt(sgst)).append("</td></tr>");
-        h.append("<tr style='border-top:1px solid #000'><td class='b'>Grand Total</td><td class='r b'>").append(fmt(grandTotal)).append("</td></tr>");
-        h.append("</table></td></tr></table>");
-
-        // TOTAL IN WORDS
-        h.append("<div class='bdr' style='margin-top:4px;padding:4px'><span class='b'>TOTAL INVOICE VALUE IN WORDS: </span>").append(words).append("</div>");
-
-        // Footer
-        h.append("<table style='margin-top:8px'>");
-        h.append("<tr><td width='70%' style='font-size:10px'><b>Air Travel and related Charges :-</b> Includes all Charges related to air transportation of passengers</td><td class='r b'>For RAMNET SOLUTIONS</td></tr>");
-        h.append("<tr><td style='font-size:10px'><b>Airport Charges :-</b> Includes ADF, UDF and PSF collected on behalf of Airport Operator, as applicable</td><td></td></tr>");
-        h.append("<tr><td style='font-size:10px'><b>Misc. Services :-</b> Includes Charges of Lounge Assistance and Travel Certificate</td><td></td></tr>");
-        h.append("<tr><td style='font-size:10px'><b>Meal :-</b> Includes all prepaid meals purchased before travel</td><td class='r b'>Authorised Signatory</td></tr>");
-        h.append("</table>");
-
-        h.append("</body></html>");
-        return h.toString();
     }
 
-    private void liRow(StringBuilder h, String part, String sac, BigDecimal taxable, BigDecimal nonTax, BigDecimal total) {
-        h.append("<tr><td class='bdr-l bdr-b bdr-r'>").append(part).append("</td>");
-        h.append("<td class='bdr-b bdr-r r'>").append(safe(sac)).append("</td>");
-        h.append("<td class='bdr-b bdr-r r'>").append(taxable != null && taxable.compareTo(BigDecimal.ZERO) != 0 ? fmt(taxable) : "").append("</td>");
-        h.append("<td class='bdr-b bdr-r r'>").append(nonTax != null && nonTax.compareTo(BigDecimal.ZERO) != 0 ? fmt(nonTax) : "").append("</td>");
-        h.append("<td class='bdr-b bdr-r r' colspan='2'>").append(total != null && total.compareTo(BigDecimal.ZERO) != 0 ? fmt(total) : "").append("</td></tr>");
+    private void addLiRow(com.itextpdf.layout.element.Table table, com.itextpdf.layout.borders.Border border,
+                          String particulars, String sac, BigDecimal taxable, BigDecimal nonTaxable, BigDecimal total) {
+        table.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(particulars).setFontSize(8)).setBorder(border).setPadding(3));
+        table.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(safe(sac)).setFontSize(8).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(border).setPadding(3));
+        table.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(taxable != null && taxable.compareTo(BigDecimal.ZERO) != 0 ? fmt(taxable) : "").setFontSize(8).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(border).setPadding(3));
+        table.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(nonTaxable != null && nonTaxable.compareTo(BigDecimal.ZERO) != 0 ? fmt(nonTaxable) : "").setFontSize(8).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(border).setPadding(3));
+        table.addCell(new com.itextpdf.layout.element.Cell().add(new com.itextpdf.layout.element.Paragraph(total != null && total.compareTo(BigDecimal.ZERO) != 0 ? fmt(total) : "").setFontSize(8).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBorder(border).setPadding(3));
     }
 
     // === Helpers ===

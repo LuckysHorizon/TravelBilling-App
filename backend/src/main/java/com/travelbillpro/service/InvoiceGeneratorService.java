@@ -1,7 +1,5 @@
 package com.travelbillpro.service;
 
-import com.itextpdf.kernel.colors.ColorConstants;
-import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -15,8 +13,11 @@ import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.travelbillpro.entity.Company;
 import com.travelbillpro.entity.Invoice;
+import com.travelbillpro.entity.SystemConfig;
 import com.travelbillpro.entity.Ticket;
 import com.travelbillpro.exception.BusinessException;
+import com.travelbillpro.repository.SystemConfigRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -25,194 +26,260 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class InvoiceGeneratorService {
 
+    private final SystemConfigRepository systemConfigRepository;
+
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
-    // Theme colors matching UI
-    private static final DeviceRgb BRAND_DARK = new DeviceRgb(26, 26, 26);
-    private static final DeviceRgb HEADER_GRAY = new DeviceRgb(249, 250, 251);
+
+    /** Load all system_config rows into a simple key→value map */
+    private java.util.Map<String, String> loadOrgConfig() {
+        java.util.Map<String, String> cfg = new java.util.HashMap<>();
+        for (SystemConfig sc : systemConfigRepository.findAll()) {
+            cfg.put(sc.getKey(), sc.getValue());
+        }
+        return cfg;
+    }
+
+    private String cfg(java.util.Map<String, String> m, String key, String fallback) {
+        String v = m.get(key);
+        return (v != null && !v.isBlank()) ? v : fallback;
+    }
 
     /**
-     * Generates a PDF byte array for the given invoice and its tickets.
+     * Generates a PDF using the organization's Tax Invoice template.
+     * All org details (name, address, GSTIN, PAN, bank) are loaded from system_config.
      */
     public byte[] generatePdf(Invoice invoice, List<Ticket> tickets) {
-        log.info("Generating PDF for Invoice {}", invoice.getInvoiceNumber());
-        
+        log.info("Generating Tax Invoice PDF for Invoice {}", invoice.getInvoiceNumber());
+
+        java.util.Map<String, String> org = loadOrgConfig();
+        String orgName   = cfg(org, "agencyName",       "RAMNET SOLUTIONS");
+        String orgAddr1  = cfg(org, "orgAddressLine1",  "Shop No. 3134, Road No. 2, MIG PHASE II,");
+        String orgAddr2  = cfg(org, "orgAddressLine2",  "BHEL, Hyderabad - 502032.");
+        String orgGstin  = cfg(org, "gstin",            "36AMWPB0052D1ZE");
+        String orgPan    = cfg(org, "panNumber",        "AMWPB0052D");
+        String bankAccName = cfg(org, "bankAccountName",   "RAMNETSOLUTIONS");
+        String bankAccNo   = cfg(org, "bankAccountNumber", "32602154473");
+        String bankName    = cfg(org, "bankName",          "SBI");
+        String bankBranch  = cfg(org, "bankBranch",        "TELLAPUR");
+        String bankIfsc    = cfg(org, "bankIfsc",          "SBIN0013071");
+
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
-            Document document = new Document(pdf, PageSize.A4);
-            document.setMargins(36, 36, 36, 36);
+            Document doc = new Document(pdf, PageSize.A4);
+            doc.setMargins(30, 36, 30, 36);
 
-            // 1. Header (Agency Details & Invoice Title)
-            Table headerTable = new Table(UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
-            
-            com.itextpdf.layout.element.Cell agencyCell = new com.itextpdf.layout.element.Cell().add(new Paragraph("TRAVELBILL PRO AGENCY")
-                    .setBold().setFontSize(16).setFontColor(BRAND_DARK))
-                    .add(new Paragraph("123 Business Avenue, Suite 400\nMumbai, MH 400001\nGSTIN: 27AABCT0000A1Z5").setFontSize(10))
-                    .setBorder(Border.NO_BORDER);
-                    
-            com.itextpdf.layout.element.Cell invoiceTitleCell = new com.itextpdf.layout.element.Cell().add(new Paragraph("TAX INVOICE")
-                    .setBold().setFontSize(20).setFontColor(BRAND_DARK).setTextAlignment(TextAlignment.RIGHT))
-                    .setBorder(Border.NO_BORDER);
-                    
-            headerTable.addCell(agencyCell);
-            headerTable.addCell(invoiceTitleCell);
-            document.add(headerTable);
-            
-            document.add(new Paragraph("\n"));
+            Border thinBorder = new SolidBorder(0.5f);
 
-            // 2. Bill To & Invoice Info
-            Table infoTable = new Table(UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
-            
+            // ═════════════════════════════════════════════════════
+            // HEADER: RAMNET SOLUTIONS | TAX INVOICE
+            // ═════════════════════════════════════════════════════
+            Table header = new Table(UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
+            Cell leftHeader = new Cell()
+                    .add(new Paragraph(orgName).setBold().setFontSize(14))
+                    .add(new Paragraph(orgAddr1).setFontSize(9))
+                    .add(new Paragraph(orgAddr2).setFontSize(9))
+                    .setBorder(thinBorder);
+            Cell rightHeader = new Cell()
+                    .add(new Paragraph("TAX INVOICE").setBold().setFontSize(18).setTextAlignment(TextAlignment.CENTER))
+                    .setBorder(thinBorder)
+                    .setTextAlignment(TextAlignment.CENTER);
+            header.addCell(leftHeader);
+            header.addCell(rightHeader);
+            doc.add(header);
+
+            // ═════════════════════════════════════════════════════
+            // CUSTOMER & INVOICE DETAILS
+            // ═════════════════════════════════════════════════════
             Company company = invoice.getCompany();
-            com.itextpdf.layout.element.Cell billToCell = new com.itextpdf.layout.element.Cell().add(new Paragraph("Bill To:")
-                    .setBold().setFontSize(10).setFontColor(BRAND_DARK))
-                    .add(new Paragraph(company.getName()).setBold().setFontSize(12))
-                    .add(new Paragraph(company.getAddress() != null ? company.getAddress() : "").setFontSize(10))
-                    .add(new Paragraph("GSTIN: " + company.getGstNumber()).setFontSize(10))
+            Table infoTable = new Table(UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
+
+            // Left: customer
+            Cell custCell = new Cell()
+                    .add(new Paragraph("Customer details:").setBold().setUnderline().setFontSize(9))
+                    .add(new Paragraph(safe(company.getName())).setBold().setFontSize(10))
+                    .add(new Paragraph(safe(company.getAddress())).setFontSize(9))
+                    .add(new Paragraph("CUSTOMER GSTIN: " + safe(company.getGstNumber())).setBold().setFontSize(9).setMarginTop(4))
                     .setBorder(Border.NO_BORDER);
-                    
-            com.itextpdf.layout.element.Cell invDetailsCell = new com.itextpdf.layout.element.Cell().add(new Paragraph("Invoice No: " + invoice.getInvoiceNumber())
-                    .setBold().setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
-                    .add(new Paragraph("Invoice Date: " + invoice.getInvoiceDate().format(DATE_FORMAT))
-                    .setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
-                    .add(new Paragraph("Billing Period: " + invoice.getBillingPeriodStart().format(DATE_FORMAT) + " to " + invoice.getBillingPeriodEnd().format(DATE_FORMAT))
-                    .setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
-                    .add(new Paragraph("Due Date: " + invoice.getDueDate().format(DATE_FORMAT))
-                    .setBold().setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
+
+            // Right: invoice meta
+            Cell metaCell = new Cell()
+                    .add(new Paragraph("GSTIN: " + orgGstin + "   PAN No.: " + orgPan).setFontSize(8))
+                    .add(metaRow("INVOICE NO:", safe(invoice.getInvoiceNumber())))
+                    .add(metaRow("DATE:", invoice.getInvoiceDate() != null ? invoice.getInvoiceDate().format(DATE_FORMAT) : ""))
+                    .add(metaRow("BILLING PERIOD:",
+                            (invoice.getBillingPeriodStart() != null ? invoice.getBillingPeriodStart().format(DATE_FORMAT) : "") +
+                            " to " +
+                            (invoice.getBillingPeriodEnd() != null ? invoice.getBillingPeriodEnd().format(DATE_FORMAT) : "")))
+                    .add(metaRow("DUE DATE:", invoice.getDueDate() != null ? invoice.getDueDate().format(DATE_FORMAT) : ""))
                     .setBorder(Border.NO_BORDER);
-                    
-            infoTable.addCell(billToCell);
-            infoTable.addCell(invDetailsCell);
-            document.add(infoTable);
-            
-            document.add(new Paragraph("\n"));
 
-            // 3. Ticket Details Table
-            Table itemTable = new Table(UnitValue.createPercentArray(new float[]{1, 2, 3, 2, 2})).useAllAvailableWidth();
-            
-            // Table Header
-            String[] headers = {"Date", "PNR", "Passenger", "Route", "Base Fare"};
-            for (String header : headers) {
-                itemTable.addHeaderCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(header).setBold().setFontSize(9))
-                        .setBackgroundColor(HEADER_GRAY)
-                        .setBorderBottom(new SolidBorder(ColorConstants.LIGHT_GRAY, 1)));
+            infoTable.addCell(custCell);
+            infoTable.addCell(metaCell);
+            doc.add(infoTable);
+
+            // ═════════════════════════════════════════════════════
+            // TICKET DETAILS TABLE
+            // ═════════════════════════════════════════════════════
+            float[] ticketColWidths = {1.2f, 1.5f, 2.5f, 2f, 1.5f, 1.2f, 1.2f, 1.2f, 1.5f};
+            Table ticketTable = new Table(UnitValue.createPercentArray(ticketColWidths)).useAllAvailableWidth().setMarginTop(10);
+
+            String[] ticketHeaders = {"Date", "PNR", "Passenger", "Route", "Base Fare", "Service Chg", "CGST", "SGST", "Total"};
+            for (String th : ticketHeaders) {
+                ticketTable.addHeaderCell(new Cell()
+                        .add(new Paragraph(th).setBold().setFontSize(8).setTextAlignment(TextAlignment.CENTER))
+                        .setBorder(thinBorder).setPadding(3));
             }
-            
-            // Table Rows
-            for (Ticket ticket : tickets) {
-                itemTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(ticket.getTravelDate().format(DATE_FORMAT)).setFontSize(9)).setBorder(Border.NO_BORDER));
-                itemTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(ticket.getPnrNumber()).setFontSize(9)).setBorder(Border.NO_BORDER));
-                itemTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(ticket.getPassengerName()).setFontSize(9)).setBorder(Border.NO_BORDER));
-                
-                String route = (ticket.getOrigin() != null ? ticket.getOrigin() : "") + 
-                               (ticket.getDestination() != null ? " - " + ticket.getDestination() : "");
-                               
-                itemTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(route).setFontSize(9)).setBorder(Border.NO_BORDER));
-                itemTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(String.format("₹%,.2f", ticket.getBaseFare())).setFontSize(9))
-                        .setTextAlignment(TextAlignment.RIGHT).setBorder(Border.NO_BORDER));
+
+            BigDecimal sumBase = BigDecimal.ZERO, sumSC = BigDecimal.ZERO, sumCGST = BigDecimal.ZERO, sumSGST = BigDecimal.ZERO, sumTotal = BigDecimal.ZERO;
+
+            for (Ticket t : tickets) {
+                BigDecimal bf = t.getBaseFare() != null ? t.getBaseFare() : BigDecimal.ZERO;
+                BigDecimal sc = t.getServiceCharge() != null ? t.getServiceCharge() : BigDecimal.ZERO;
+                BigDecimal cg = t.getCgst() != null ? t.getCgst() : BigDecimal.ZERO;
+                BigDecimal sg = t.getSgst() != null ? t.getSgst() : BigDecimal.ZERO;
+                BigDecimal tot = t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO;
+
+                sumBase = sumBase.add(bf);
+                sumSC = sumSC.add(sc);
+                sumCGST = sumCGST.add(cg);
+                sumSGST = sumSGST.add(sg);
+                sumTotal = sumTotal.add(tot);
+
+                String route = safe(t.getOrigin()) + " → " + safe(t.getDestination());
+                addTicketRow(ticketTable, thinBorder,
+                        t.getTravelDate() != null ? t.getTravelDate().format(DATE_FORMAT) : "",
+                        safe(t.getPnrNumber()), safe(t.getPassengerName()), route,
+                        bf, sc, cg, sg, tot);
             }
-            
-            // Add top border to the row after items
-            itemTable.addCell(new com.itextpdf.layout.element.Cell(1, 4).add(new Paragraph("")).setBorderTop(new SolidBorder(ColorConstants.LIGHT_GRAY, 1)).setBorderBottom(Border.NO_BORDER).setBorderLeft(Border.NO_BORDER).setBorderRight(Border.NO_BORDER));
-            itemTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph("")).setBorderTop(new SolidBorder(ColorConstants.LIGHT_GRAY, 1)).setBorderBottom(Border.NO_BORDER).setBorderLeft(Border.NO_BORDER).setBorderRight(Border.NO_BORDER));
 
-            document.add(itemTable);
-            document.add(new Paragraph("\n"));
+            // TOTALS row
+            Cell totalLabel = new Cell(1, 4).add(new Paragraph("TOTAL").setBold().setFontSize(9)).setBorder(thinBorder).setPadding(3);
+            ticketTable.addCell(totalLabel);
+            addNumCell(ticketTable, sumBase, true, thinBorder);
+            addNumCell(ticketTable, sumSC, true, thinBorder);
+            addNumCell(ticketTable, sumCGST, true, thinBorder);
+            addNumCell(ticketTable, sumSGST, true, thinBorder);
+            addNumCell(ticketTable, sumTotal, true, thinBorder);
 
-            // 4. Summary Table (Right aligned)
-            Table summaryTable = new Table(UnitValue.createPercentArray(new float[]{3, 1})).useAllAvailableWidth();
-            
-            addSummaryRow(summaryTable, "Total Base Fare", invoice.getSubtotal(), false);
-            addSummaryRow(summaryTable, "Service Charge", invoice.getServiceCharge(), false);
-            addSummaryRow(summaryTable, "CGST", invoice.getCgstTotal(), false);
-            addSummaryRow(summaryTable, "SGST", invoice.getSgstTotal(), false);
-            
-            // Grand Total
-            summaryTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph("Grand Total").setBold().setFontSize(11))
-                    .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT));
-            summaryTable.addCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(String.format("₹%,.2f", invoice.getGrandTotal())).setBold().setFontSize(11))
-                    .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT));
+            doc.add(ticketTable);
 
-            // Wrap summary table to push it right
-            Table rightLayoutTable = new Table(UnitValue.createPercentArray(new float[]{2, 2})).useAllAvailableWidth();
-            rightLayoutTable.addCell(new com.itextpdf.layout.element.Cell().setBorder(Border.NO_BORDER)); // Empty left cell
-            rightLayoutTable.addCell(new com.itextpdf.layout.element.Cell().add(summaryTable).setBorder(Border.NO_BORDER)); // Summary on right
-            
-            document.add(rightLayoutTable);
+            // ═════════════════════════════════════════════════════
+            // BANK DETAILS + TAX SUMMARY
+            // ═════════════════════════════════════════════════════
+            Table bankTax = new Table(UnitValue.createPercentArray(new float[]{1.4f, 0.6f})).useAllAvailableWidth().setMarginTop(10);
 
-            document.close();
+            Cell bankCell = new Cell()
+                    .add(new Paragraph("OUR BANK DETAILS:").setBold().setUnderline().setFontSize(9))
+                    .add(new Paragraph("A/C HOLDER NAME: " + bankAccName).setFontSize(9))
+                    .add(new Paragraph("CURRENT A/C NO.: " + bankAccNo).setFontSize(9))
+                    .add(new Paragraph("BANK NAME: " + bankName + ", BRANCH: " + bankBranch).setFontSize(9))
+                    .add(new Paragraph("IFSC : " + bankIfsc).setFontSize(9))
+                    .setBorder(Border.NO_BORDER);
+
+            // Tax summary
+            BigDecimal serviceCharge = invoice.getServiceCharge() != null ? invoice.getServiceCharge() : sumSC;
+            BigDecimal cgstTotal = invoice.getCgstTotal() != null ? invoice.getCgstTotal() : sumCGST;
+            BigDecimal sgstTotal = invoice.getSgstTotal() != null ? invoice.getSgstTotal() : sumSGST;
+            BigDecimal grandTotal = invoice.getGrandTotal() != null ? invoice.getGrandTotal() : sumTotal;
+
+            Table taxSummary = new Table(UnitValue.createPercentArray(new float[]{1, 1})).useAllAvailableWidth();
+            addTaxRow(taxSummary, "Service Charge", serviceCharge);
+            addTaxRow(taxSummary, "CGST", cgstTotal);
+            addTaxRow(taxSummary, "SGST", sgstTotal);
+
+            // Grand Total with top border
+            taxSummary.addCell(new Cell().add(new Paragraph("Grand Total").setBold().setFontSize(10))
+                    .setBorder(Border.NO_BORDER).setBorderTop(new SolidBorder(0.5f)));
+            taxSummary.addCell(new Cell().add(new Paragraph(fmt(grandTotal)).setBold().setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
+                    .setBorder(Border.NO_BORDER).setBorderTop(new SolidBorder(0.5f)));
+
+            Cell taxCell = new Cell().add(taxSummary).setBorder(Border.NO_BORDER);
+            bankTax.addCell(bankCell);
+            bankTax.addCell(taxCell);
+            doc.add(bankTax);
+
+            // ═════════════════════════════════════════════════════
+            // TOTAL IN WORDS
+            // ═════════════════════════════════════════════════════
+            String words = EmployeeBillingService.convertToWords(grandTotal);
+            Table wordsTable = new Table(1).useAllAvailableWidth().setMarginTop(4);
+            wordsTable.addCell(new Cell()
+                    .add(new Paragraph("TOTAL INVOICE VALUE IN WORDS: " + words).setBold().setFontSize(9))
+                    .setBorder(thinBorder).setPadding(4));
+            doc.add(wordsTable);
+
+            // ═════════════════════════════════════════════════════
+            // FOOTER
+            // ═════════════════════════════════════════════════════
+            Table footer = new Table(UnitValue.createPercentArray(new float[]{3, 1})).useAllAvailableWidth().setMarginTop(8).setFontSize(8);
+            footer.addCell(new Cell().add(new Paragraph("Air Travel and related Charges :- Includes all Charges related to air transportation of passengers")).setBorder(Border.NO_BORDER));
+            footer.addCell(new Cell().add(new Paragraph("For " + orgName).setBold().setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+            footer.addCell(new Cell().add(new Paragraph("Airport Charges :- Includes ADF, UDF and PSF collected on behalf of Airport Operator, as applicable")).setBorder(Border.NO_BORDER));
+            footer.addCell(new Cell().add(new Paragraph("")).setBorder(Border.NO_BORDER));
+            footer.addCell(new Cell().add(new Paragraph("Misc. Services :- Includes Charges of Lounge Assistance and Travel Certificate")).setBorder(Border.NO_BORDER));
+            footer.addCell(new Cell().add(new Paragraph("")).setBorder(Border.NO_BORDER));
+            footer.addCell(new Cell().add(new Paragraph("Meal :- Includes all prepaid meals purchased before travel")).setBorder(Border.NO_BORDER));
+            footer.addCell(new Cell().add(new Paragraph("Authorised Signatory").setBold().setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+            doc.add(footer);
+
+            doc.close();
             return baos.toByteArray();
-            
+
         } catch (Exception e) {
-            log.error("Failed to generate PDF invoice", e);
+            log.error("Failed to generate RAMNET PDF invoice", e);
             throw new BusinessException("Failed to generate PDF", "PDF_GENERATION_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    
-    private void addSummaryRow(Table table, String label, java.math.BigDecimal amount, boolean isBold) {
-        com.itextpdf.layout.element.Cell labelCell = new com.itextpdf.layout.element.Cell().add(new Paragraph(label).setFontSize(10))
-                .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT);
-        com.itextpdf.layout.element.Cell amountCell = new com.itextpdf.layout.element.Cell().add(new Paragraph(String.format("₹%,.2f", amount)).setFontSize(10))
-                .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT);
-                
-        if (isBold) {
-            labelCell.setBold();
-            amountCell.setBold();
-        }
-        
-        table.addCell(labelCell);
-        table.addCell(amountCell);
-    }
 
-    /**
-     * Generates an Excel XLSX byte array for the given invoice and its tickets.
-     */
+    // ═════════════════════════════════════════════════════
+    // EXCEL GENERATION (unchanged format)
+    // ═════════════════════════════════════════════════════
+
     public byte[] generateExcel(Invoice invoice, List<Ticket> tickets) {
         log.info("Generating Excel for Invoice {}", invoice.getInvoiceNumber());
-        
+
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-             
+
             Sheet sheet = workbook.createSheet("Invoice Details");
-            
-            // Header Style
+
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            
-            // Currency Style
+
             CellStyle currencyStyle = workbook.createCellStyle();
             DataFormat format = workbook.createDataFormat();
             currencyStyle.setDataFormat(format.getFormat("#,##0.00"));
 
             int rowNum = 0;
-            
-            // 1. Invoice Meta Info
+
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue("Invoice Number:");
             row.createCell(1).setCellValue(invoice.getInvoiceNumber());
-            
+
             row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue("Company Name:");
             row.createCell(1).setCellValue(invoice.getCompany().getName());
-            
+
             row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue("Invoice Date:");
             row.createCell(1).setCellValue(invoice.getInvoiceDate().toString());
-            
-            rowNum++; // Empty row
-            
-            // 2. Ticket Table Header
+
+            rowNum++;
+
             Row headerRow = sheet.createRow(rowNum++);
             String[] headers = {"Travel Date", "PNR", "Type", "Passenger Name", "Origin", "Destination", "Operator", "Base Fare", "Service Charge", "CGST", "SGST", "Total Amount"};
             for (int i = 0; i < headers.length; i++) {
@@ -220,8 +287,7 @@ public class InvoiceGeneratorService {
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
-            
-            // 3. Ticket Rows
+
             for (Ticket t : tickets) {
                 Row tRow = sheet.createRow(rowNum++);
                 tRow.createCell(0).setCellValue(t.getTravelDate().toString());
@@ -231,77 +297,92 @@ public class InvoiceGeneratorService {
                 tRow.createCell(4).setCellValue(t.getOrigin());
                 tRow.createCell(5).setCellValue(t.getDestination());
                 tRow.createCell(6).setCellValue(t.getOperatorName());
-                
-                org.apache.poi.ss.usermodel.Cell fareCell = tRow.createCell(7);
-                fareCell.setCellValue(t.getBaseFare() != null ? t.getBaseFare().doubleValue() : 0);
-                fareCell.setCellStyle(currencyStyle);
-                
-                org.apache.poi.ss.usermodel.Cell scCell = tRow.createCell(8);
-                scCell.setCellValue(t.getServiceCharge() != null ? t.getServiceCharge().doubleValue() : 0);
-                scCell.setCellStyle(currencyStyle);
-                
-                org.apache.poi.ss.usermodel.Cell cgstCell = tRow.createCell(9);
-                cgstCell.setCellValue(t.getCgst() != null ? t.getCgst().doubleValue() : 0);
-                cgstCell.setCellStyle(currencyStyle);
-                
-                org.apache.poi.ss.usermodel.Cell sgstCell = tRow.createCell(10);
-                sgstCell.setCellValue(t.getSgst() != null ? t.getSgst().doubleValue() : 0);
-                sgstCell.setCellStyle(currencyStyle);
-                
-                org.apache.poi.ss.usermodel.Cell totCell = tRow.createCell(11);
-                totCell.setCellValue(t.getTotalAmount() != null ? t.getTotalAmount().doubleValue() : 0);
-                totCell.setCellStyle(currencyStyle);
+
+                setCurrencyCell(tRow, 7, t.getBaseFare(), currencyStyle);
+                setCurrencyCell(tRow, 8, t.getServiceCharge(), currencyStyle);
+                setCurrencyCell(tRow, 9, t.getCgst(), currencyStyle);
+                setCurrencyCell(tRow, 10, t.getSgst(), currencyStyle);
+                setCurrencyCell(tRow, 11, t.getTotalAmount(), currencyStyle);
             }
-            
-            rowNum++; // Empty row
-            
-            // 4. Summaries
-            Row sumRow1 = sheet.createRow(rowNum++);
-            sumRow1.createCell(10).setCellValue("Total Base Fare:");
-            org.apache.poi.ss.usermodel.Cell sumCell1 = sumRow1.createCell(11);
-            sumCell1.setCellValue(invoice.getSubtotal() != null ? invoice.getSubtotal().doubleValue() : 0);
-            sumCell1.setCellStyle(currencyStyle);
-            
-            Row sumRow2 = sheet.createRow(rowNum++);
-            sumRow2.createCell(10).setCellValue("Total Service Charge:");
-            org.apache.poi.ss.usermodel.Cell sumCell2 = sumRow2.createCell(11);
-            sumCell2.setCellValue(invoice.getServiceCharge() != null ? invoice.getServiceCharge().doubleValue() : 0);
-            sumCell2.setCellStyle(currencyStyle);
-            
-            Row sumRow4 = sheet.createRow(rowNum++);
-            sumRow4.createCell(10).setCellValue("Total CGST:");
-            org.apache.poi.ss.usermodel.Cell sumCell4 = sumRow4.createCell(11);
-            sumCell4.setCellValue(invoice.getCgstTotal() != null ? invoice.getCgstTotal().doubleValue() : 0);
-            sumCell4.setCellStyle(currencyStyle);
-            
-            Row sumRow5 = sheet.createRow(rowNum++);
-            sumRow5.createCell(10).setCellValue("Total SGST:");
-            org.apache.poi.ss.usermodel.Cell sumCell5 = sumRow5.createCell(11);
-            sumCell5.setCellValue(invoice.getSgstTotal() != null ? invoice.getSgstTotal().doubleValue() : 0);
-            sumCell5.setCellStyle(currencyStyle);
-            
-            Row sumRow6 = sheet.createRow(rowNum++);
-            sumRow6.createCell(10).setCellValue("Grand Total:");
-            org.apache.poi.ss.usermodel.Cell sumCell6 = sumRow6.createCell(11);
-            sumCell6.setCellValue(invoice.getGrandTotal() != null ? invoice.getGrandTotal().doubleValue() : 0);
+
+            rowNum++;
+
+            addSummaryRow(sheet, rowNum++, "Total Base Fare:", invoice.getSubtotal(), currencyStyle);
+            addSummaryRow(sheet, rowNum++, "Total Service Charge:", invoice.getServiceCharge(), currencyStyle);
+            addSummaryRow(sheet, rowNum++, "Total CGST:", invoice.getCgstTotal(), currencyStyle);
+            addSummaryRow(sheet, rowNum++, "Total SGST:", invoice.getSgstTotal(), currencyStyle);
+
+            Row gtRow = sheet.createRow(rowNum);
+            gtRow.createCell(10).setCellValue("Grand Total:");
             CellStyle grandTotalStyle = workbook.createCellStyle();
             grandTotalStyle.cloneStyleFrom(currencyStyle);
             Font gtFont = workbook.createFont();
             gtFont.setBold(true);
             grandTotalStyle.setFont(gtFont);
-            sumCell6.setCellStyle(grandTotalStyle);
-            
-            // Auto-size columns
+            setCurrencyCell(gtRow, 11, invoice.getGrandTotal(), grandTotalStyle);
+
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);
             }
 
             workbook.write(baos);
             return baos.toByteArray();
-             
+
         } catch (IOException e) {
             log.error("Failed to generate Excel invoice", e);
             throw new BusinessException("Failed to generate Excel", "EXCEL_GENERATION_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    // ═════════════════════════════════════════════════════
+    // HELPERS
+    // ═════════════════════════════════════════════════════
+
+    private Paragraph metaRow(String label, String value) {
+        return new Paragraph(label + " " + value).setFontSize(9).setMarginTop(2);
+    }
+
+    private void addTicketRow(Table table, Border border, String date, String pnr, String passenger, String route,
+                              BigDecimal baseFare, BigDecimal sc, BigDecimal cgst, BigDecimal sgst, BigDecimal total) {
+        table.addCell(new Cell().add(new Paragraph(date).setFontSize(8)).setBorder(border).setPadding(2));
+        table.addCell(new Cell().add(new Paragraph(pnr).setFontSize(8)).setBorder(border).setPadding(2));
+        table.addCell(new Cell().add(new Paragraph(passenger).setFontSize(8)).setBorder(border).setPadding(2));
+        table.addCell(new Cell().add(new Paragraph(route).setFontSize(8)).setBorder(border).setPadding(2));
+        addNumCell(table, baseFare, false, border);
+        addNumCell(table, sc, false, border);
+        addNumCell(table, cgst, false, border);
+        addNumCell(table, sgst, false, border);
+        addNumCell(table, total, false, border);
+    }
+
+    private void addNumCell(Table table, BigDecimal value, boolean bold, Border border) {
+        Paragraph p = new Paragraph(fmt(value)).setFontSize(8).setTextAlignment(TextAlignment.RIGHT);
+        if (bold) p.setBold();
+        table.addCell(new Cell().add(p).setBorder(border).setPadding(2));
+    }
+
+    private void addTaxRow(Table table, String label, BigDecimal amount) {
+        table.addCell(new Cell().add(new Paragraph(label).setBold().setFontSize(9)).setBorder(Border.NO_BORDER));
+        table.addCell(new Cell().add(new Paragraph(fmt(amount)).setFontSize(9).setTextAlignment(TextAlignment.RIGHT)).setBorder(Border.NO_BORDER));
+    }
+
+    private String fmt(BigDecimal v) {
+        return v != null ? String.format("%,.2f", v) : "0.00";
+    }
+
+    private String safe(String s) {
+        return s != null ? s : "";
+    }
+
+    private void setCurrencyCell(Row row, int col, BigDecimal value, CellStyle style) {
+        org.apache.poi.ss.usermodel.Cell cell = row.createCell(col);
+        cell.setCellValue(value != null ? value.doubleValue() : 0);
+        cell.setCellStyle(style);
+    }
+
+    private void addSummaryRow(Sheet sheet, int rowNum, String label, BigDecimal value, CellStyle style) {
+        Row row = sheet.createRow(rowNum);
+        row.createCell(10).setCellValue(label);
+        setCurrencyCell(row, 11, value, style);
     }
 }

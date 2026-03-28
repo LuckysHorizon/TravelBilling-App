@@ -194,7 +194,7 @@ public class BillingPanelService {
         resp.setTicketCount(tickets.size());
 
         BigDecimal total = tickets.stream()
-                .map(t -> t.getBaseFare() != null ? t.getBaseFare() : BigDecimal.ZERO)
+                .map(t -> t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         resp.setTotalAmount(total);
 
@@ -205,6 +205,9 @@ public class BillingPanelService {
             tr.setPassengerName(t.getPassengerName());
             tr.setTravelDate(t.getTravelDate());
             tr.setBaseFare(t.getBaseFare());
+            tr.setServiceCharge(t.getServiceCharge());
+            tr.setCgst(t.getCgst());
+            tr.setSgst(t.getSgst());
             tr.setTotalAmount(t.getTotalAmount());
             tr.setStatus(t.getStatus());
             tr.setOrigin(t.getOrigin());

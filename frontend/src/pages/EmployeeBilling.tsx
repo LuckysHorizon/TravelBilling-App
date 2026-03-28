@@ -40,13 +40,7 @@ interface InvoiceData {
   sgstRate: number;
 }
 
-const RAMNET = {
-  name: 'RAMNET SOLUTIONS',
-  addr1: 'Shop No. 3134, Road No. 2, MIG PHASE II,',
-  addr2: 'BHEL, Hyderabad - 502032.',
-  gstin: '36AMWPB0052D1ZE',
-  pan: 'AMWPB0052D',
-};
+
 
 const numberToWords = (amount: number): string => {
   const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE',
@@ -107,17 +101,43 @@ const EmployeeBilling = () => {
   const [loading, setLoading] = useState(false);
   const [createdInvoiceId, setCreatedInvoiceId] = useState<number | null>(null);
 
+  // GST config from System Settings
+  const [gstConfig, setGstConfig] = useState<{ cgstRate: number; sgstRate: number; serviceChargePerTicket: number }>({ cgstRate: 9, sgstRate: 9, serviceChargePerTicket: 0 });
+
+  // Organization profile from System Settings (for WYSIWYG preview)
+  const [orgConfig, setOrgConfig] = useState<Record<string, string>>({
+    agencyName: '', orgAddressLine1: '', orgAddressLine2: '',
+    gstin: '', panNumber: '',
+    bankAccountName: '', bankAccountNumber: '',
+    bankName: '', bankBranch: '', bankIfsc: '',
+  });
+
   // The main invoice data state (all editable)
   const [inv, setInv] = useState<InvoiceData | null>(null);
   const [originalInv, setOriginalInv] = useState<InvoiceData | null>(null);
 
-  // Load companies
+  // Load companies and GST config
   useEffect(() => {
     setCompaniesLoading(true);
     api.get('/companies').then((res: any) => {
       const data = res.data?.content || res.data || [];
       setCompanies(Array.isArray(data) ? data : []);
     }).catch(() => message.error('Failed to load companies')).finally(() => setCompaniesLoading(false));
+
+    // Fetch billing config from System Settings
+    api.get('/admin/gst-config').then((res: any) => {
+      const cfg = res.data;
+      setGstConfig({
+        cgstRate: Number(cfg.cgstRate ?? 9),
+        sgstRate: Number(cfg.sgstRate ?? 9),
+        serviceChargePerTicket: Number(cfg.serviceChargePerTicket ?? 0),
+      });
+    }).catch(() => { /* use defaults */ });
+
+    // Fetch org profile for WYSIWYG invoice preview
+    api.get('/admin/system-config').then((res: any) => {
+      setOrgConfig((prev: Record<string, string>) => ({ ...prev, ...res.data }));
+    }).catch(() => { /* use defaults */ });
   }, []);
 
   // Load passengers when company changes
@@ -173,9 +193,11 @@ const EmployeeBilling = () => {
         companyName: selectedCompany.name || '',
         companyAddress: selectedCompany.address || '',
         companyGstin: selectedCompany.gstNumber || '',
-        airTravel1, airTravel2: 0, psf, udc, agentCharges, otherCharges, discount,
+        airTravel1, airTravel2: 0, psf, udc,
+        agentCharges: agentCharges > 0 ? agentCharges : gstConfig.serviceChargePerTicket * tickets.length,
+        otherCharges, discount,
         sacAir: '996425', sacAgent: '998551',
-        cgstRate: 9, sgstRate: 9,
+        cgstRate: gstConfig.cgstRate, sgstRate: gstConfig.sgstRate,
       };
       setInv(invoiceData);
       setOriginalInv(JSON.parse(JSON.stringify(invoiceData)));
@@ -238,12 +260,12 @@ const EmployeeBilling = () => {
       }
       const { data: fileData } = await api.get(`/employee-billing/invoices/${invoiceId}/export/${type}`, { responseType: 'blob' });
       const blob = new Blob([fileData], {
-        type: type === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/html',
+        type: type === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf',
       });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Invoice_${inv.invoiceNumber}_${inv.passengerName.replace(/\s+/g, '_')}.${type === 'pdf' ? 'html' : type}`;
+      a.download = `Invoice_${inv.invoiceNumber}_${inv.passengerName.replace(/\s+/g, '_')}.${type}`;
       a.click();
       window.URL.revokeObjectURL(url);
       message.success(`${type.toUpperCase()} downloaded!`);
@@ -333,9 +355,9 @@ const EmployeeBilling = () => {
             {/* Header */}
             <div style={S.headerRow}>
               <div style={S.headerLeft}>
-                <div style={{ fontSize: 15, fontWeight: 'bold' }}>{RAMNET.name}</div>
-                <div>{RAMNET.addr1}</div>
-                <div>{RAMNET.addr2}</div>
+                <div style={{ fontSize: 15, fontWeight: 'bold' }}>{orgConfig.agencyName || 'Your Organization'}</div>
+                <div>{orgConfig.orgAddressLine1}</div>
+                <div>{orgConfig.orgAddressLine2}</div>
               </div>
               <div style={{ ...S.headerRight, border: '2px solid #000' }}>TAX INVOICE</div>
             </div>
@@ -351,7 +373,7 @@ const EmployeeBilling = () => {
                 </div>
               </div>
               <div style={S.col50}>
-                <div style={{ fontSize: 10 }}>GSTIN: {RAMNET.gstin} &nbsp; PAN No.: {RAMNET.pan}</div>
+                <div style={{ fontSize: 10 }}>GSTIN: {orgConfig.gstin} &nbsp; PAN No.: {orgConfig.panNumber}</div>
                 <div style={S.metaRow}><span style={S.metaLabel}>INVOICE NO:</span>
                   <span style={{ border: '1px solid #000', padding: '0 6px' }}><EditableCell value={inv.invoiceNumber} onChange={v => upd('invoiceNumber', v)} /></span></div>
                 <div style={S.metaRow}><span style={S.metaLabel}>DATE:</span>
@@ -410,10 +432,10 @@ const EmployeeBilling = () => {
             <div style={S.bankTax}>
               <div style={{ flex: '1.4' }}>
                 <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: 6 }}>OUR BANK DETAILS:</div>
-                <div>A/C HOLDER NAME: RAMNETSOLUTIONS</div>
-                <div>CURRENT A/C NO.: 32602154473</div>
-                <div>BANK NAME: SBI, BRANCH: TELLAPUR</div>
-                <div>IFSC : SBIN0013071</div>
+                <div>A/C HOLDER NAME: {orgConfig.bankAccountName}</div>
+                <div>CURRENT A/C NO.: {orgConfig.bankAccountNumber}</div>
+                <div>BANK NAME: {orgConfig.bankName}{orgConfig.bankBranch ? `, BRANCH: ${orgConfig.bankBranch}` : ''}</div>
+                <div>IFSC : {orgConfig.bankIfsc}</div>
               </div>
               <div style={{ flex: '0.6' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}><span style={{ fontWeight: 'bold' }}>CGST</span><span>{fmt(totals.cgst)}</span></div>
@@ -433,7 +455,7 @@ const EmployeeBilling = () => {
             <div style={{ marginTop: 10, fontSize: 10 }}>
               <div style={S.footerRow}>
                 <div style={{ flex: 1 }}><b>Air Travel and related Charges :-</b> Includes all Charges related to air transportation of passengers</div>
-                <div style={{ textAlign: 'right', fontWeight: 'bold', minWidth: 180 }}>For RAMNET SOLUTIONS</div>
+                <div style={{ textAlign: 'right', fontWeight: 'bold', minWidth: 180 }}>For {orgConfig.agencyName || 'Your Organization'}</div>
               </div>
               <div style={S.footerRow}><div style={{ flex: 1 }}><b>Airport Charges :-</b> Includes ADF, UDF and PSF collected on behalf of Airport Operator, as applicable</div></div>
               <div style={S.footerRow}><div style={{ flex: 1 }}><b>Misc. Services :-</b> Includes Charges of Lounge Assistance and Travel Certificate</div></div>
