@@ -3,6 +3,7 @@ package com.travelbillpro.controller;
 import com.travelbillpro.dto.AuthDto;
 import com.travelbillpro.entity.Organization;
 import com.travelbillpro.entity.User;
+import com.travelbillpro.enums.Role;
 import com.travelbillpro.repository.UserRepository;
 import com.travelbillpro.security.CustomUserDetails;
 import com.travelbillpro.security.JwtService;
@@ -42,6 +43,9 @@ public class AuthController {
 
     @Value("${app.security.jwt.refresh-token-expiration-ms}")
     private long refreshTokenExpiry;
+
+    @Value("${spring.datasource.url}")
+    private String masterDatasourceUrl;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthDto.LoginRequest request, HttpServletResponse response) {
@@ -168,7 +172,7 @@ public class AuthController {
         Organization org = user.getOrganization();
         Long orgId = org != null ? org.getId() : null;
         String orgSlug = org != null ? org.getSlug() : null;
-        String dbUrl = org != null ? org.getDbUrl() : null;
+        String dbUrl = resolveJwtDbUrl(user, org);
 
         // Generate Access Token with org context
         String accessToken = jwtService.generateToken(userDetails, orgId, orgSlug, dbUrl);
@@ -223,5 +227,25 @@ public class AuthController {
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private String resolveJwtDbUrl(User user, Organization org) {
+        if (user.getRole() == Role.SUPER_ADMIN) {
+            return null;
+        }
+        if (org == null) {
+            return null;
+        }
+
+        String orgDbUrl = org.getDbUrl();
+        if (orgDbUrl == null || orgDbUrl.isBlank() || isLocalDbUrl(orgDbUrl)) {
+            return masterDatasourceUrl;
+        }
+        return orgDbUrl;
+    }
+
+    private boolean isLocalDbUrl(String dbUrl) {
+        String normalized = dbUrl.toLowerCase();
+        return normalized.contains("localhost") || normalized.contains("127.0.0.1");
     }
 }

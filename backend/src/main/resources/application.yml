@@ -39,6 +39,8 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/travelbill}
     user: ${SPRING_DATASOURCE_USERNAME:travelbill}
     password: ${SPRING_DATASOURCE_PASSWORD:Lucky@0716}
+    placeholders:
+      master_db_url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/travelbill}
 
   # SMTP Configuration
   mail:

@@ -15,17 +15,19 @@ CREATE TABLE organizations (
 );
 
 -- Add org_id to users table (nullable — NULL means Super Admin / master context)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS org_id BIGINT REFERENCES organizations(id);
+ALTER TABLE users ADD COLUMN org_id BIGINT NULL;
+ALTER TABLE users ADD CONSTRAINT fk_users_org_id
+    FOREIGN KEY (org_id) REFERENCES organizations(id);
 
 -- Update existing admin user to SUPER_ADMIN role
 UPDATE users SET role = 'SUPER_ADMIN' WHERE username = 'admin';
 
--- Create default organization pointing to local DB
+-- Create default organization pointing to current master DB connection
 INSERT INTO organizations (name, slug, db_url, admin_email, status, created_at, updated_at)
 VALUES (
     'Default Organization',
     'default',
-    'jdbc:postgresql://localhost:5432/travelbill',
+    '${master_db_url}',
     'admin@travelbillpro.com',
     'ACTIVE',
     CURRENT_TIMESTAMP,
