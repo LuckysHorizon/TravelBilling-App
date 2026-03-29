@@ -156,6 +156,7 @@ public class TenantProvisioningService {
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
                 role VARCHAR(20) NOT NULL,
+                org_id BIGINT,
                 failed_attempts INTEGER DEFAULT 0,
                 locked_until TIMESTAMP,
                 is_active BOOLEAN DEFAULT TRUE,

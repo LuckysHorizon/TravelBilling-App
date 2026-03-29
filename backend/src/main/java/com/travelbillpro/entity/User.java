@@ -1,6 +1,7 @@
 package com.travelbillpro.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.travelbillpro.enums.Role;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -32,8 +33,9 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "org_id")
+    @JsonIgnoreProperties({"dbUrl", "provisioningLog", "hibernateLazyInitializer", "handler"})
     private Organization organization;
 
     @Column(name = "failed_attempts")

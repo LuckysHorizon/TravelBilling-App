@@ -55,6 +55,8 @@ public class TenantDataSourceManager {
             ALTER TABLE billing_panels ADD COLUMN IF NOT EXISTS invoice_id BIGINT;
             -- gst_config table
             ALTER TABLE gst_config ADD COLUMN IF NOT EXISTS service_charge_per_ticket DECIMAL(10,2) DEFAULT 0;
+            -- users table
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS org_id BIGINT;
             """;
         try (Connection conn = ds.getConnection();
              Statement stmt = conn.createStatement()) {
