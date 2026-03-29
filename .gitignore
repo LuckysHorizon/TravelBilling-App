@@ -44,6 +44,7 @@ backend/logs/
 # ── Environment / Secrets ─────────────────────────────
 .env
 *.env.local
+.env.example 
 
 # ── Node (frontend) ──────────────────────────────────
 frontend/node_modules/
