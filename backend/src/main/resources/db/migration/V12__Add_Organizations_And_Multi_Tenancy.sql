@@ -15,9 +15,20 @@ CREATE TABLE organizations (
 );
 
 -- Add org_id to users table (nullable — NULL means Super Admin / master context)
-ALTER TABLE users ADD COLUMN org_id BIGINT NULL;
-ALTER TABLE users ADD CONSTRAINT fk_users_org_id
-    FOREIGN KEY (org_id) REFERENCES organizations(id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS org_id BIGINT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_users_org_id'
+    ) THEN
+        ALTER TABLE users
+            ADD CONSTRAINT fk_users_org_id
+            FOREIGN KEY (org_id) REFERENCES organizations(id);
+    END IF;
+END $$;
 
 -- Update existing admin user to SUPER_ADMIN role
 UPDATE users SET role = 'SUPER_ADMIN' WHERE username = 'admin';
@@ -32,7 +43,11 @@ VALUES (
     'ACTIVE',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
-);
+)
+ON CONFLICT (slug) DO UPDATE
+SET db_url = EXCLUDED.db_url,
+    admin_email = EXCLUDED.admin_email,
+    updated_at = CURRENT_TIMESTAMP;
 
 -- Link existing non-super-admin users to default org
 UPDATE users SET org_id = (SELECT id FROM organizations WHERE slug = 'default')

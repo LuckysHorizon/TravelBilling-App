@@ -36,6 +36,16 @@ public class DataSourceConfig {
     @Bean
     @ConfigurationProperties("spring.datasource.hikari")
     public HikariDataSource masterDataSource(DataSourceProperties masterDataSourceProperties) {
+        String jdbcUrl = masterDataSourceProperties.getUrl();
+        if (jdbcUrl != null && jdbcUrl.length() >= 2) {
+            if ((jdbcUrl.startsWith("\"") && jdbcUrl.endsWith("\""))
+                    || (jdbcUrl.startsWith("'") && jdbcUrl.endsWith("'"))) {
+                String sanitized = jdbcUrl.substring(1, jdbcUrl.length() - 1);
+                masterDataSourceProperties.setUrl(sanitized);
+                log.warn("Sanitized quoted SPRING_DATASOURCE_URL value; remove wrapping quotes from environment variable.");
+            }
+        }
+
         HikariDataSource ds = masterDataSourceProperties
                 .initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
