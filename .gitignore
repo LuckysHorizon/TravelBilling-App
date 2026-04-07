@@ -44,8 +44,20 @@ backend/logs/
 # ── Environment / Secrets ─────────────────────────────
 .env
 *.env.local
-.env.example 
+.env.*.local
+backend/src/main/resources/application-secret.yml
+pdf-extractor/.env
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
 
 # ── Node (frontend) ──────────────────────────────────
 frontend/node_modules/
 frontend/dist/
+
+
+.claude
+.code-review-graph 
+.cursor

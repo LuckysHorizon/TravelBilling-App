@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+const apiPrefix = `${apiBaseUrl}/api`;
+
 // Create an Axios instance
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: apiPrefix,
   withCredentials: true, // Important for cookies (JWT)
   headers: {
     'Content-Type': 'application/json',
@@ -28,7 +31,7 @@ api.interceptors.response.use(
 
       try {
         // Attempt to refresh the token using the HttpOnly refresh cookie
-        await axios.post('http://localhost:8080/api/auth/refresh', {}, { withCredentials: true });
+        await axios.post(`${apiPrefix}/auth/refresh`, {}, { withCredentials: true });
         
         // If successful, retry the original request
         return api(originalRequest);

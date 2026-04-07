@@ -22,6 +22,17 @@ declare namespace NodeJS {
 
 declare var process: NodeJS.Process
 
+interface ImportMetaEnv {
+  readonly VITE_API_BASE_URL?: string
+  readonly VITE_PDF_SERVICE_URL?: string
+  readonly NEXT_PUBLIC_API_URL?: string
+  readonly NEXT_PUBLIC_PDF_SERVICE_URL?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 declare module '*.gif' {
   const src: string
   export default src

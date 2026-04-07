@@ -15,17 +15,31 @@ TravelBilling is a billing and invoicing platform for travel agencies with a mon
 ## Local Setup
 
 1. Copy `.env.example` values as needed.
-2. Start stack:
+2. Frontend optional override file: copy `frontend/.env.local.example` to `frontend/.env.local` only if you need custom local ports.
+3. Start stack:
 
 ```bash
 make dev
 ```
 
-3. Service URLs:
+4. Service URLs:
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
 - Backend health: `http://localhost:8080/health`
 - PDF extractor health: `http://localhost:8000/health`
+
+## Local Dev Quickstart
+
+From a fresh clone:
+
+```bash
+git clone https://github.com/LuckysHorizon/TravelBilling-App.git
+cd TravelBilling-App
+cp .env.example .env
+make dev
+```
+
+Then open `http://localhost:3000`.
 
 ## CI/CD Workflows
 
