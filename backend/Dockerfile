@@ -12,10 +12,14 @@ RUN ./mvnw -q -DskipTests clean package
 FROM eclipse-temurin:17-jre-jammy AS runner
 WORKDIR /app
 ENV SERVER_PORT=8080
+ENV SPRING_PROFILES_ACTIVE=prod
 
 RUN groupadd -g 1001 spring && useradd -u 1001 -g spring -m spring
 
 COPY --from=builder /app/target/*.jar app.jar
+
+# Create data directory for file storage (writable by spring user)
+RUN mkdir -p /app/data/storage && chown -R spring:spring /app/data
 
 USER spring
 EXPOSE 8080
@@ -23,4 +27,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:8080/health || exit 1
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+CMD ["java", "-XX:MaxRAMPercentage=75.0", "-XX:+UseG1GC", "-XX:+ExitOnOutOfMemoryError", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]

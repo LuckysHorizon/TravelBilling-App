@@ -1,0 +1,51 @@
+# ═══════════════════════════════════════════════════════════════
+# TravelBill Pro — PRODUCTION Profile
+# ═══════════════════════════════════════════════════════════════
+# Activate: SPRING_PROFILES_ACTIVE=prod
+#
+# This profile is hardened for production:
+#   - Schema validation only (ddl-auto: validate)
+#   - Strict Flyway enforcement
+#   - Optimized connection pool
+#   - No SQL logging, no stack traces in responses
+#   - File-based logging with rotation
+# ═══════════════════════════════════════════════════════════════
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    baseline-on-migrate: false
+
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      leak-detection-threshold: 30000
+      pool-name: prod-pool
+
+# ── Server Hardening ─────────────────────────────────────────
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+
+# ── Logging ──────────────────────────────────────────────────
+logging:
+  level:
+    com.travelbillpro: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.apache.pdfbox.pdmodel.font: ERROR
+  file:
+    name: logs/app.log
+  charset:
+    console: UTF-8
+    file: UTF-8

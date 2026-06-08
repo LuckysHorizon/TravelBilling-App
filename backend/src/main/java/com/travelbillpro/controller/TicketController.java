@@ -40,7 +40,7 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getAllTickets(pageable));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<TicketDto.TicketResponse> getTicketById(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.getTicketById(id));
     }
@@ -70,7 +70,7 @@ public class TicketController {
         );
     }
 
-    @PutMapping("/{id}/approve")
+    @PutMapping("/{id:\\d+}/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'BILLING_STAFF')")
     public ResponseEntity<TicketDto.TicketResponse> updateAndApproveTicket(
             @PathVariable Long id,
@@ -79,7 +79,7 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.updateAndApproveTicket(id, request, userDetails.getUser()));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     @PreAuthorize("hasAnyRole('ADMIN', 'BILLING_STAFF')")
     public ResponseEntity<Void> deleteTicket(
             @PathVariable Long id,
@@ -105,7 +105,7 @@ public class TicketController {
      * Serves the PDF file associated with a ticket.
      * Uses ticket ID instead of file path to avoid absolute path encoding issues in URLs.
      */
-    @GetMapping("/{id}/file")
+    @GetMapping("/{id:\\d+}/file")
     public ResponseEntity<Resource> getTicketFile(@PathVariable Long id) {
         TicketDto.TicketResponse ticket = ticketService.getTicketById(id);
         if (ticket.getFilePath() == null || ticket.getFilePath().isBlank()) {

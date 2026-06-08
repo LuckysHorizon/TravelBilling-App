@@ -28,6 +28,7 @@ COPY --chown=appuser:appgroup . .
 
 USER appuser
 EXPOSE 8000
+ENV APP_ENV=production
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD python -c "import os, urllib.request; port = os.getenv('PORT', '8000'); urllib.request.urlopen(f'http://localhost:{port}/health')" || exit 1

@@ -79,20 +79,31 @@ Fields:
 RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
 
 
-# ── Main extraction function ─────────────────────────────────────────────────
+# ── Main extraction functions ────────────────────────────────────────────────
 
 async def extract_from_pdf(file_path: str) -> dict[str, Any]:
-    """
-    Full pipeline: PDF file -> rendered images -> Groq vision (per page) -> merge -> structured JSON.
-    """
-    start = time.monotonic()
-
-    # Step 1: Render PDF pages to base64 PNG images
+    """Full pipeline: PDF file -> rendered images -> Groq vision (per page) -> merge -> structured JSON."""
     page_images = _render_pdf_to_images(file_path)
-    total_pages = len(page_images)
-    log.info("Rendered %d page(s) from %s", total_pages, Path(file_path).name)
+    log.info("Rendered %d page(s) from %s", len(page_images), Path(file_path).name)
+    return await _extract_from_images(page_images)
 
-    # Step 2: Call Groq for each page
+
+async def extract_from_bytes(pdf_bytes: bytes) -> dict[str, Any]:
+    """Full pipeline: PDF bytes -> rendered images -> Groq vision (per page) -> merge -> structured JSON."""
+    page_images = _render_bytes_to_images(pdf_bytes)
+    log.info("Rendered %d page(s) from uploaded bytes (%d bytes)", len(page_images), len(pdf_bytes))
+    return await _extract_from_images(page_images)
+
+
+async def _extract_from_images(page_images: list[str]) -> dict[str, Any]:
+    """Shared extraction pipeline: rendered page images -> Groq vision -> merge -> JSON."""
+    start = time.monotonic()
+    total_pages = len(page_images)
+
+    if total_pages == 0:
+        raise ValueError("PDF has no pages to extract")
+
+    # Call Groq for each page
     page_results = []
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0}
 
@@ -115,7 +126,7 @@ async def extract_from_pdf(file_path: str) -> dict[str, Any]:
     if not page_results:
         raise ValueError("No valid data extracted from any page")
 
-    # Step 3: Merge page results into final passenger records
+    # Merge page results into final passenger records
     records = _merge_pages(page_results)
 
     elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -141,6 +152,31 @@ def _render_pdf_to_images(file_path: str) -> list[str]:
         raise ValueError(f"Not a PDF file: {file_path}")
 
     doc = fitz.open(str(path))
+    images: list[str] = []
+
+    try:
+        mat = fitz.Matrix(RENDER_DPI / 72, RENDER_DPI / 72)
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            pix = page.get_pixmap(matrix=mat, alpha=False)
+            png_bytes = pix.tobytes("png")
+            images.append(base64.b64encode(png_bytes).decode("ascii"))
+            log.debug(
+                "Page %d: %dx%d px, %d bytes",
+                page_num + 1, pix.width, pix.height, len(png_bytes),
+            )
+    finally:
+        doc.close()
+
+    return images
+
+
+def _render_bytes_to_images(pdf_bytes: bytes) -> list[str]:
+    """Render every page of PDF bytes to a base64-encoded PNG string."""
+    if not pdf_bytes:
+        raise ValueError("Empty PDF bytes")
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     images: list[str] = []
 
     try:

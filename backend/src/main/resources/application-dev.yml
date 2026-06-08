@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════════════════════
+# TravelBill Pro — DEVELOPMENT Profile
+# ═══════════════════════════════════════════════════════════════
+# Activate: SPRING_PROFILES_ACTIVE=dev  (default)
+#
+# This profile is optimized for local development:
+#   - Validates DB schema (ddl-auto: validate) — Flyway manages migrations
+#   - Verbose SQL + security logging
+#   - Small connection pool
+#   - Lenient Flyway migration enforcement
+# ═══════════════════════════════════════════════════════════════
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+  flyway:
+    baseline-on-migrate: true
+
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
+      pool-name: dev-pool
+
+# ── Logging ──────────────────────────────────────────────────
+logging:
+  level:
+    com.travelbillpro: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.apache.pdfbox.pdmodel.font: ERROR
+  charset:
+    console: UTF-8

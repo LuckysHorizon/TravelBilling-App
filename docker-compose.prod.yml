@@ -1,0 +1,73 @@
+# ═══════════════════════════════════════════════════════════════
+# TravelBill Pro — Production Docker Compose Override
+# ═══════════════════════════════════════════════════════════════
+#
+# Usage:
+#   APP_ENV=production docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   OR:  make prod
+#
+# This override adds:
+#   - restart: always (auto-recover from crashes)
+#   - Resource limits (prevent runaway memory usage)
+#   - Log rotation (prevent disk fill)
+#   - Production environment variables
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  backend:
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  pdf-extractor:
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      APP_ENV: production
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    restart: always
+    env_file:
+      - .env.production
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  db:
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  redis:
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

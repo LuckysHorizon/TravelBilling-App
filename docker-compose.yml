@@ -34,19 +34,23 @@ services:
     container_name: travelbill-backend
     ports:
       - "8080:8080"
+    env_file:
+      - .env.development
     environment:
+      # Override service URLs to use Docker networking
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/travelbill
       SPRING_DATASOURCE_USERNAME: travelbill
       SPRING_DATASOURCE_PASSWORD: travelbill
       SPRING_REDIS_HOST: redis
       SERVER_PORT: 8080
-      EXTRACTION_SERVICE_URL: http://pdf-extractor:8000/extract
+      EXTRACTION_SERVICE_URL: http://pdf-extractor:8000/extract-upload
       EXTRACTION_HEALTH_URL: http://pdf-extractor:8000/health
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
+    restart: unless-stopped
 
   pdf-extractor:
     build:
@@ -55,21 +59,36 @@ services:
     container_name: travelbill-pdf-extractor
     ports:
       - "8000:8000"
+    env_file:
+      - .env.development
     environment:
       SERVICE_PORT: 8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
 
   frontend:
     build:
       context: ./frontend
-      target: builder
+      target: runner
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+        VITE_PDF_SERVICE_URL: http://localhost:8000
     container_name: travelbill-frontend
     ports:
-      - "3000:3000"
-    environment:
-      VITE_API_BASE_URL: http://localhost:8080
-      VITE_PDF_SERVICE_URL: http://localhost:8000
+      - "3000:80"
     depends_on:
       - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   postgres_data:

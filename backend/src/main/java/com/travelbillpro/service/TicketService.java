@@ -124,16 +124,16 @@ public class TicketService {
                 String storedPath = fileStorageService.storeTicketContent(companyId, file);
                 log.info("=== Pipeline START: {} ===", filename);
 
-                // ──── STEP 2: Resolve absolute path for Python service ───────────
-                String absolutePath = fileStorageService.resolveAbsolutePath(storedPath);
-                log.info("Resolved absolute path: {}", absolutePath);
+                // ──── STEP 2: Read stored file bytes for Python service ─────────
+                byte[] pdfBytes = fileStorageService.readFileBytes(storedPath);
+                log.info("Read {} bytes for Python extraction", pdfBytes.length);
 
-                // ──── STEP 3: Call Python extraction service ─────────────────────
-                //  Python renders PDF pages via PyMuPDF → sends to NVIDIA vision
+                // ──── STEP 3: Call Python extraction service (streams bytes via multipart)
+                //  Python renders PDF pages via PyMuPDF → sends to Groq vision
                 //  Returns structured JSON with passenger records
                 @SuppressWarnings("unchecked")
                 Map<String, Object> extractionResponse = 
-                        pythonExtractionClient.extract(absolutePath, companyId);
+                        pythonExtractionClient.extract(pdfBytes, filename, companyId);
 
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> records = 

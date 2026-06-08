@@ -23,10 +23,17 @@ declare namespace NodeJS {
 declare var process: NodeJS.Process
 
 interface ImportMetaEnv {
+  // Standard Vite env properties
+  readonly MODE: string
+  readonly DEV: boolean
+  readonly PROD: boolean
+  readonly BASE_URL: string
+  readonly SSR: boolean
+
+  // App-specific env variables
   readonly VITE_API_BASE_URL?: string
   readonly VITE_PDF_SERVICE_URL?: string
-  readonly NEXT_PUBLIC_API_URL?: string
-  readonly NEXT_PUBLIC_PDF_SERVICE_URL?: string
+  readonly VITE_APP_VERSION?: string
 }
 
 interface ImportMeta {

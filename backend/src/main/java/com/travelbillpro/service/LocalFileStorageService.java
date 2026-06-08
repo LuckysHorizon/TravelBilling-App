@@ -196,4 +196,28 @@ public class LocalFileStorageService {
         }
         return rootLocation.resolve(storedPath).normalize().toAbsolutePath().toString();
     }
+
+    /**
+     * Read stored file contents as byte array.
+     * Used to stream PDF bytes to the Python extraction service via HTTP multipart,
+     * avoiding cross-container filesystem path issues in Docker.
+     */
+    public byte[] readFileBytes(String storedPath) {
+        Path file;
+        Path givenPath = Paths.get(storedPath);
+        if (givenPath.isAbsolute()) {
+            file = givenPath.normalize();
+        } else {
+            file = rootLocation.resolve(storedPath).normalize().toAbsolutePath();
+        }
+        if (!Files.exists(file)) {
+            throw new BusinessException("Stored file not found: " + storedPath, "FILE_NOT_FOUND", HttpStatus.NOT_FOUND);
+        }
+        try {
+            return Files.readAllBytes(file);
+        } catch (IOException e) {
+            log.error("Failed to read file bytes: {}", storedPath, e);
+            throw new BusinessException("Failed to read stored file", "FILE_READ_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

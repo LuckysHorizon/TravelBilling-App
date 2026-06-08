@@ -1,61 +1,76 @@
+# ═══════════════════════════════════════════════════════════════
+# TravelBill Pro — Base Configuration (shared across all profiles)
+# ═══════════════════════════════════════════════════════════════
+# Profile-specific overrides live in:
+#   application-dev.yml   → local development
+#   application-prod.yml  → production deployment
+#
+# Activate via:  SPRING_PROFILES_ACTIVE=dev  (or prod)
+# ═══════════════════════════════════════════════════════════════
+
 spring:
   profiles:
-    include: secret
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: travelbill-pro
-  
-  # Database Configuration
+
+  # ── Database ────────────────────────────────────────────────
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/travelbill}
     username: ${SPRING_DATASOURCE_USERNAME:travelbill}
-    password: ${SPRING_DATASOURCE_PASSWORD:Lucky@0716}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
+      maximum-pool-size: ${HIKARI_MAX_POOL:10}
+      minimum-idle: ${HIKARI_MIN_IDLE:3}
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      pool-name: TravelBillPool
 
-  # JPA Configuration
+  # ── JPA (shared settings) ──────────────────────────────────
   jpa:
     open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  # Redis Configuration
+  # ── Redis ──────────────────────────────────────────────────
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 1
 
-  # Flyway Configuration — runs ONLY against the master DB
+  # ── Flyway ─────────────────────────────────────────────────
   flyway:
     enabled: true
-    baseline-on-migrate: true
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/travelbill}
     user: ${SPRING_DATASOURCE_USERNAME:travelbill}
-    password: ${SPRING_DATASOURCE_PASSWORD:Lucky@0716}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     placeholders:
       master_db_url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/travelbill}
 
-  # SMTP Configuration
+  # ── SMTP ───────────────────────────────────────────────────
   mail:
     host: ${SMTP_HOST:smtp.example.com}
     port: ${SMTP_PORT:587}
-    username: ${SMTP_USER:smtpuser}
-    password: ${SMTP_PASS:smtppassword}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASS:}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-            
-  # File Upload Config
+
+  # ── File Upload ────────────────────────────────────────────
   servlet:
     multipart:
       max-file-size: 10MB
@@ -64,7 +79,7 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
-# TravelBill Pro Custom Configuration
+# ── App Custom Config ────────────────────────────────────────
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173}
@@ -72,8 +87,8 @@ app:
     base-path: ${STORAGE_BASE_PATH:./data/storage}
   security:
     jwt:
-      secret: ${JWT_SECRET:dHJhdmVsYmlsbC1wcm8tdmVyeS1zZWN1cmUtYW5kLWxvbmctc2VjcmV0LWtleS1mb3Itand0LXNpZ25hdHVyZQ==}
-      access-token-expiration-ms: 28800000 # 8 hours
+      secret: ${JWT_SECRET:}
+      access-token-expiration-ms: 28800000   # 8 hours
       refresh-token-expiration-ms: 604800000 # 7 days
   nvidia:
     api-key: ${NVIDIA_API_KEY:}
@@ -87,21 +102,9 @@ app:
     ip: 500
     user: 200
 
-# Python PDF Extraction Microservice
+# ── Python PDF Extraction Microservice ───────────────────────
 extraction:
   service:
-    url: ${EXTRACTION_SERVICE_URL:http://localhost:8000/extract}
+    url: ${EXTRACTION_SERVICE_URL:http://localhost:8000/extract-upload}
     health-url: ${EXTRACTION_HEALTH_URL:http://localhost:8000/health}
     timeout-seconds: ${EXTRACTION_TIMEOUT:120}
-
-logging:
-  level:
-    com.travelbillpro: DEBUG
-    org.springframework.security: INFO
-    org.hibernate.SQL: WARN
-    org.apache.pdfbox.pdmodel.font: ERROR
-  file:
-    name: logs/app.log
-  charset:
-    console: UTF-8
-    file: UTF-8

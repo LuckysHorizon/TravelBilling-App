@@ -43,9 +43,9 @@ backend/logs/
 
 # ── Environment / Secrets ─────────────────────────────
 .env
+.env.*
 *.env.local
 .env.*.local
-backend/src/main/resources/application-secret.yml
 pdf-extractor/.env
 *.pem
 *.key
