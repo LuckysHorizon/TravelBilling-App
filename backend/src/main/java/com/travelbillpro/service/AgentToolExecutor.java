@@ -32,7 +32,9 @@ public class AgentToolExecutor {
     private final InvoiceRepository invoiceRepository;
     private final CompanyRepository companyRepository;
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
+            .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     // Tools that modify data and require explicit user approval
     private static final Set<String> APPROVAL_REQUIRED_TOOLS = Set.of(
@@ -118,7 +120,7 @@ public class AgentToolExecutor {
                         "type", "object",
                         "properties", Map.of(
                                 "route", Map.of("type", "string",
-                                        "description", "The route path to navigate to. Valid routes: /dashboard, /tickets, /invoices, /companies, /billing, /reports, /settings")
+                                        "description", "The route path to navigate to. Valid routes: /dashboard, /tickets, /invoices, /companies, /billing-panels, /reports, /settings")
                         ),
                         "required", List.of("route")
                 )
@@ -262,7 +264,7 @@ public class AgentToolExecutor {
 
         Set<String> validRoutes = Set.of(
                 "/dashboard", "/tickets", "/invoices", "/companies",
-                "/billing", "/reports", "/settings"
+                "/billing", "/billing-panels", "/reports", "/settings"
         );
 
         if (!validRoutes.contains(route)) {

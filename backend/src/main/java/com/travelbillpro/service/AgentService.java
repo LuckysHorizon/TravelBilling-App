@@ -38,7 +38,9 @@ public class AgentService {
     private final AgentToolExecutor toolExecutor;
     private final AgentConfig agentConfig;
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
+            .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             You are TravelBill AI, a friendly and intelligent assistant for the TravelBilling application.
@@ -56,6 +58,11 @@ public class AgentService {
             5. Be concise, helpful, and professional. Use formatting like bullet points and bold for readability.
             6. Never make up data — use tools to get real results when asked about application data.
             7. If asked to perform a destructive action, confirm with the user first.
+            8. When returning dashboard statistics or summary data, format them as a Markdown table with two columns: Metric and Value. Example:
+            | Metric | Value |
+            |--------|-------|
+            | Total tickets | 15 |
+            | Pending tickets | 0 |
 
             Available tools (use ONLY when needed for data/navigation):
             - get_tickets: Search and filter tickets

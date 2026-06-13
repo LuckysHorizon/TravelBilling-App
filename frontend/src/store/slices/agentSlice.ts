@@ -16,6 +16,7 @@ interface AgentState {
   error: string | null;
   provider: string;
   unreadCount: number;
+  navigateToast: string | null;
 }
 
 const initialState: AgentState = {
@@ -31,6 +32,7 @@ const initialState: AgentState = {
   error: null,
   provider: 'Groq',
   unreadCount: 0,
+  navigateToast: null,
 };
 
 // ── Slice ────────────────────────────────────────────────────────────────────
@@ -108,6 +110,27 @@ const agentSlice = createSlice({
     resetUnread(state) {
       state.unreadCount = 0;
     },
+    setNavigateToast(state, action: PayloadAction<string | null>) {
+      state.navigateToast = action.payload;
+    },
+    resolveLastToolCall(state) {
+      for (let i = state.messages.length - 1; i >= 0; i--) {
+        if (state.messages[i].type === 'tool_call') {
+          state.messages[i].toolResult = 'completed';
+          state.messages[i].resolved = true;
+          break;
+        }
+      }
+    },
+    resolveMessage(state, action: PayloadAction<string>) {
+      const msg = state.messages.find(
+        (m) => m.messageId === action.payload || m.id === action.payload
+      );
+      if (msg) {
+        msg.resolved = true;
+        msg.toolResult = 'completed';
+      }
+    },
   },
 });
 
@@ -130,6 +153,9 @@ export const {
   clearError,
   setProvider,
   resetUnread,
+  setNavigateToast,
+  resolveLastToolCall,
+  resolveMessage,
 } = agentSlice.actions;
 
 export default agentSlice.reducer;

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { Zap } from 'lucide-react';
 import { RootState } from '../../store';
 import { clearRateLimited } from '../../store/slices/agentSlice';
-import { Clock } from 'lucide-react';
 
 export const RateLimitNotice: React.FC = () => {
   const dispatch = useDispatch();
@@ -29,9 +29,9 @@ export const RateLimitNotice: React.FC = () => {
   if (!rateLimited || countdown <= 0) return null;
 
   return (
-    <div className="agent-rate-limit">
-      <Clock size={14} />
-      Rate limited. Try again in {countdown}s
+    <div className="rate-limit-notice">
+      <Zap size={14} style={{ flexShrink: 0 }} />
+      <span>Rate limited. Please wait {countdown}s before sending another message.</span>
     </div>
   );
 };

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Sparkles } from 'lucide-react';
 import { RootState } from '../../store';
 import { togglePanel } from '../../store/slices/agentSlice';
 import { AgentPanel } from './AgentPanel';
@@ -137,16 +136,26 @@ export const AgentFAB: React.FC = () => {
     <>
       <button
         ref={fabRef}
-        className={`agent-fab ${stateClass}`}
+        className={`agent-trigger ${unreadCount > 0 ? 'agent-trigger--notify' : ''}`}
         style={fabStyle}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        title="Open TravelBill AI (Ctrl+Shift+A)"
         aria-label="AI Assistant"
       >
-        <Sparkles size={24} />
-        {unreadCount > 0 && <span className="agent-fab-badge" />}
-        <span className="agent-fab-tooltip">AI Assistant (Ctrl+Shift+A)</span>
+        <span
+          className="agent-trigger__icon"
+          style={{
+            animation: isStreaming ? 'spin 2s linear infinite' : 'none',
+            display: 'inline-block',
+          }}
+        >
+          ✦
+        </span>
+        {unreadCount > 0 && (
+          <span className="agent-trigger__badge">{unreadCount}</span>
+        )}
       </button>
       <AgentPanel />
     </>

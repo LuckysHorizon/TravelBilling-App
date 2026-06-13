@@ -35,6 +35,7 @@ export interface AgentMessage {
   toolResult?: string;
   timestamp?: string;
   type?: 'text' | 'tool_call' | 'tool_result' | 'approval' | 'error';
+  resolved?: boolean;
 }
 
 export interface ToolApproval {
@@ -128,7 +129,14 @@ export function streamChat(
       case 'tool_call': {
         // Extract tool info from toolCall field
         const tc = event.toolCall || {};
-        const name = tc.name || tc.function?.name || 'Unknown Tool';
+        let name = tc.name || tc.function?.name;
+        if (!name && typeof content === 'string') {
+          const match = content.match(/Using:\s*(\w+)/);
+          if (match) {
+            name = match[1];
+          }
+        }
+        if (!name) name = 'Unknown Tool';
         const params = tc.params || tc.arguments || tc.function?.arguments || {};
         fireToolCall({ name, params: typeof params === 'string' ? JSON.parse(params) : params });
         break;

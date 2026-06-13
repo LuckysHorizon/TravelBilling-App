@@ -15,6 +15,9 @@ import {
   setError,
   clearError,
   setProvider,
+  setNavigateToast,
+  resolveLastToolCall,
+  resolveMessage,
 } from '../store/slices/agentSlice';
 import {
   streamChat,
@@ -42,6 +45,7 @@ export function useAgentChat() {
   const contentRef = useRef('');
   // Track the session ID received from the server during streaming
   const streamSessionRef = useRef<string | null>(null);
+  const lastToolCallIdRef = useRef<string | null>(null);
 
   // ── Send a message and handle the SSE stream ──────────────────────────────
   const sendMessage = useCallback(
@@ -64,6 +68,7 @@ export function useAgentChat() {
       dispatch(clearError());
       contentRef.current = '';
       streamSessionRef.current = null;
+      lastToolCallIdRef.current = null;
 
       const context = {
         currentPage: location.pathname,
@@ -83,13 +88,33 @@ export function useAgentChat() {
           }
         })
         .onText((text) => {
+          if (lastToolCallIdRef.current) {
+            dispatch(resolveMessage(lastToolCallIdRef.current));
+            lastToolCallIdRef.current = null;
+          }
+          if (text.includes('✅ Tool result received.')) {
+            dispatch(resolveLastToolCall());
+            return;
+          }
           contentRef.current += text;
           dispatch(appendStreamContent(text));
         })
         .onToolCall((_tool) => {
-          // Tool calls are intermediate — don't add to messages
-          // The LLM will include the tool result in its final text response
-          dispatch(appendStreamContent(`\n🔧 Using tool: ${_tool.name}...\n`));
+          const chipId = `tool-${Date.now()}-${Math.random()}`;
+          dispatch(
+            addMessage({
+              messageId: chipId,
+              sessionId: streamSessionRef.current || currentSessionId || '',
+              role: 'assistant',
+              content: '',
+              createdAt: new Date().toISOString(),
+              type: 'tool_call',
+              toolName: _tool.name,
+              toolParams: _tool.params,
+              resolved: false,
+            })
+          );
+          lastToolCallIdRef.current = chipId;
         })
         .onApproval((approval) => {
           dispatch(setPendingApproval(approval));
@@ -98,14 +123,26 @@ export function useAgentChat() {
           dispatch(setProvider(provider));
         })
         .onNavigate((route) => {
-          // Actually navigate the user to the requested route
           try {
-            navigate(route);
+            // Map common synonyms to actual routes
+            let targetRoute = route;
+            if (route === '/billing') {
+              targetRoute = '/billing-panels';
+            }
+            dispatch(setNavigateToast(targetRoute));
+            setTimeout(() => {
+              navigate(targetRoute);
+              dispatch(setNavigateToast(null));
+            }, 800);
           } catch (e) {
             console.warn('[Agent] Navigation failed:', route, e);
           }
         })
         .onDone((data) => {
+          if (lastToolCallIdRef.current) {
+            dispatch(resolveMessage(lastToolCallIdRef.current));
+            lastToolCallIdRef.current = null;
+          }
           dispatch(setStreaming(false));
 
           // Add the final assistant message from accumulated content
@@ -137,6 +174,10 @@ export function useAgentChat() {
           loadSessionsInternal();
         })
         .onError((errMsg) => {
+          if (lastToolCallIdRef.current) {
+            dispatch(resolveMessage(lastToolCallIdRef.current));
+            lastToolCallIdRef.current = null;
+          }
           dispatch(setError(errMsg));
           dispatch(setStreaming(false));
           dispatch(clearStream());

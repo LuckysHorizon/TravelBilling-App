@@ -1,9 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Select } from 'antd';
-import { X, Sparkles, MessageSquare, Trash2 } from 'lucide-react';
+import { X, History, Bot, Sparkles, Navigation } from 'lucide-react';
 import { RootState } from '../../store';
-import { closePanel, setSession } from '../../store/slices/agentSlice';
+import { closePanel, togglePanel, setSession } from '../../store/slices/agentSlice';
 import { useAgentChat } from '../../hooks/useAgentChat';
 import { AgentMessage } from './AgentMessage';
 import { AgentInput } from './AgentInput';
@@ -11,17 +10,38 @@ import { ActionCard } from './ActionCard';
 import { ProviderBadge } from './ProviderBadge';
 import { RateLimitNotice } from './RateLimitNotice';
 
-const SUGGESTIONS = [
-  'Show me all pending tickets',
-  'Generate billing report for this month',
-  'How many invoices are due this week?',
-  'Navigate to ticket upload',
-  'Show dashboard statistics',
-  'List all companies',
-];
+function AgentEmptyState() {
+  return (
+    <div className="agent-empty">
+      <div className="agent-empty__icon">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+          <circle cx="28" cy="28" r="27" stroke="url(#grad)" strokeWidth="1.5" />
+          <defs>
+            <linearGradient id="grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#6C63FF" />
+              <stop offset="50%" stopColor="#A78BFA" />
+              <stop offset="100%" stopColor="#38BDF8" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <Bot
+          size={24}
+          style={{ position: 'absolute', color: '#A78BFA' }}
+          strokeWidth={1.5}
+        />
+      </div>
+      <h3 className="agent-empty__title">TravelBill AI</h3>
+      <p className="agent-empty__subtitle">
+        Search tickets, pull invoices, check companies, and navigate the app — all from one conversation.
+      </p>
+    </div>
+  );
+}
 
 export const AgentPanel: React.FC = () => {
   const dispatch = useDispatch();
+  const [showSessions, setShowSessions] = useState(false);
+
   const {
     panelOpen,
     currentSessionId,
@@ -29,6 +49,7 @@ export const AgentPanel: React.FC = () => {
     isStreaming,
     streamingContent,
     pendingApproval,
+    navigateToast,
   } = useSelector((state: RootState) => state.agent);
 
   const {
@@ -38,6 +59,7 @@ export const AgentPanel: React.FC = () => {
     loadSessions,
     loadMessages,
     deleteSession,
+    abortStream,
     sessions,
   } = useAgentChat();
 
@@ -64,125 +86,113 @@ export const AgentPanel: React.FC = () => {
     }
   }, [messages, streamingContent]);
 
-  const handleSessionChange = (value: string) => {
-    if (value === '__new__') {
-      dispatch(setSession(null));
-    } else {
-      dispatch(setSession(value));
-    }
-  };
+  // Keyboard shortcut to open/toggle panel: Ctrl+K / Cmd+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        dispatch(togglePanel());
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [dispatch]);
 
-  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    deleteSession(sessionId);
+  // Escape key to close panel
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && panelOpen) {
+        dispatch(closePanel());
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [panelOpen, dispatch]);
+
+  const toggleSessionMenu = () => {
+    setShowSessions(!showSessions);
   };
 
   const showEmptyState = messages.length === 0 && !isStreaming;
 
   return (
-    <div className={`agent-panel ${panelOpen ? 'agent-panel--open' : ''}`}>
+    <div
+      data-agent-panel
+      style={{
+        transform: panelOpen ? 'translateX(0)' : 'translateX(100%)',
+        opacity: panelOpen ? 1 : 0,
+        transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease',
+      }}
+    >
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="agent-panel-header">
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          <div className="agent-panel-title">
-            <div className="agent-panel-title-icon">
-              <Sparkles size={14} color="white" />
-            </div>
-            TravelBill AI
-          </div>
+      <header className="agent-header">
+        <div className="agent-avatar">
+          {isStreaming && <span className="agent-avatar__pulse" />}
+          <span className="agent-avatar__inner">
+            <Sparkles size={16} strokeWidth={1.5} />
+          </span>
+        </div>
+
+        <div className="agent-identity">
+          <span className="agent-name">TravelBill AI</span>
           <ProviderBadge />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {sessions.length > 0 && (
-            <Select
-              className="agent-session-select"
-              value={currentSessionId || '__new__'}
-              onChange={handleSessionChange}
-              size="small"
-              style={{ width: 140 }}
-              popupMatchSelectWidth={false}
-              options={[
-                { label: '+ New Chat', value: '__new__' },
-                ...sessions.map((s) => ({
-                  label: (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 8,
-                      }}
-                    >
-                      <span
-                        style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {s.title || 'Untitled'}
-                      </span>
-                      <Trash2
-                        size={12}
-                        style={{ flexShrink: 0, opacity: 0.5, cursor: 'pointer' }}
-                        onClick={(e: any) => handleDeleteSession(s.sessionId, e)}
-                      />
-                    </div>
-                  ),
-                  value: s.sessionId,
-                })),
-              ]}
-            />
-          )}
-          <button
-            className="agent-panel-close"
-            onClick={() => dispatch(closePanel())}
-            aria-label="Close AI panel"
-          >
-            <X size={18} />
+        <div className="agent-header-actions">
+          <button title="Sessions" onClick={toggleSessionMenu}>
+            <History size={16} />
+          </button>
+          <button title="Close" onClick={() => dispatch(closePanel())}>
+            <X size={16} />
           </button>
         </div>
-      </div>
+      </header>
+
+      {/* ── Collapsible Session Bar ───────────────────────────────────── */}
+      {showSessions && sessions.length > 0 && (
+        <div className="session-list">
+          <button className="session-new" onClick={() => dispatch(setSession(null))}>
+            + New Chat
+          </button>
+          {sessions.slice(0, 5).map((s) => (
+            <button
+              key={s.sessionId}
+              className={`session-chip ${s.sessionId === currentSessionId ? 'active' : ''}`}
+              onClick={() => dispatch(setSession(s.sessionId))}
+              title={s.title || 'Untitled session'}
+            >
+              {(s.title || 'Chat').slice(0, 20)}
+              <span
+                className="session-chip__delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  deleteSession(s.sessionId);
+                }}
+                title="Delete session"
+              >
+                ×
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Rate Limit Notice ─────────────────────────────────────────── */}
       <RateLimitNotice />
 
-      {/* ── Body ──────────────────────────────────────────────────────── */}
-      <div className="agent-panel-body" ref={bodyRef}>
+      {/* ── Messages Area ─────────────────────────────────────────────── */}
+      <div className="agent-messages" ref={bodyRef}>
         {showEmptyState ? (
-          <div className="agent-empty-state">
-            <MessageSquare size={64} className="agent-empty-state-icon" />
-            <h3 className="agent-empty-state-title">TravelBill AI Assistant</h3>
-            <p className="agent-empty-state-subtitle">
-              Ask me anything about your travel billing data, generate reports,
-              or navigate the app.
-            </p>
-            <div className="agent-suggestions">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  className="agent-suggestion-chip"
-                  onClick={() => sendMessage(suggestion)}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
+          <AgentEmptyState />
         ) : (
           <>
             {messages.map((msg) => (
-              <AgentMessage key={msg.messageId || msg.id} message={msg} />
+              <AgentMessage
+                key={msg.messageId || msg.id}
+                message={msg}
+                activeStreaming={isStreaming}
+              />
             ))}
 
             {/* Streaming message */}
@@ -197,6 +207,7 @@ export const AgentPanel: React.FC = () => {
                   type: 'text',
                 }}
                 isStreaming
+                activeStreaming={isStreaming}
               />
             )}
 
@@ -212,10 +223,23 @@ export const AgentPanel: React.FC = () => {
         )}
       </div>
 
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <div className="agent-panel-footer">
-        <AgentInput onSend={sendMessage} isStreaming={isStreaming} />
+      {/* ── Footer / Input ────────────────────────────────────────────── */}
+      <AgentInput
+        onSend={sendMessage}
+        onStop={abortStream}
+        isStreaming={isStreaming}
+      />
+      <div className="agent-kbd-hint">
+        ⌘K to open · Esc to close
       </div>
+
+      {/* ── Navigation Toast ─────────────────────────────────────────── */}
+      {navigateToast && (
+        <div className="agent-toast">
+          <Navigation size={14} style={{ marginRight: 6, display: 'inline-block', verticalAlign: 'middle' }} />
+          Navigating to {navigateToast.replace(/^\//, '')}...
+        </div>
+      )}
     </div>
   );
 };
