@@ -42,66 +42,167 @@
   --agent-spring:        all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* ── Floating Trigger Button ────────────────────────────────────────────── */
+/* ============================================================
+   AGENT FAB — Glowing Concentric Orb Button (Clean Version)
+   ============================================================ */
 
-.agent-trigger {
+.agent-fab-root {
   position: fixed;
   bottom: 28px;
   right: 28px;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--agent-accent), #A78BFA);
-  border: none;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  color: white;
-  font-size: 20px;
-  box-shadow: 0 4px 24px var(--agent-accent-glow), 0 2px 8px rgba(0,0,0,0.4);
-  transition: var(--agent-spring);
   z-index: 999;
-}
-
-.agent-trigger:hover {
-  transform: scale(1.1) rotate(15deg);
-  box-shadow: 0 6px 32px var(--agent-accent-glow);
-}
-
-.agent-trigger:active {
-  transform: scale(0.95);
-}
-
-.agent-trigger__icon {
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  pointer-events: auto;
+  user-select: none;
 }
 
-.agent-trigger__badge {
+/* ── Main Button ─────────────────────────────────────────── */
+
+.fab-btn {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: none;
+  outline: none;
+  cursor: grab;
+
+  /* 3D layered outer shell */
+  background: conic-gradient(
+    from 135deg,
+    #3D3BA8 0deg,
+    #6C63FF 90deg,
+    #8B85FF 180deg,
+    #5A52E0 270deg,
+    #3D3BA8 360deg
+  );
+
+  box-shadow:
+    /* outer raised edge highlight (top-left) */
+    inset 2px 2px 4px rgba(255, 255, 255, 0.18),
+    /* outer pressed shadow (bottom-right) */
+    inset -2px -2px 4px rgba(0, 0, 0, 0.40),
+    /* ambient glow underneath */
+    0 4px 24px rgba(108, 99, 255, 0.55),
+    0 2px 8px  rgba(0, 0, 0, 0.50);
+
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.18s ease;
+
+  z-index: 2;
+}
+
+/* Hover: lift + glow intensify */
+.fab-btn:hover {
+  transform: scale(1.07);
+  box-shadow:
+    inset 2px 2px 4px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.40),
+    0 6px 32px rgba(108, 99, 255, 0.70),
+    0 2px 10px rgba(0, 0, 0, 0.50);
+}
+
+/* Click: compress */
+.fab-btn:active {
+  transform: scale(0.93);
+  box-shadow:
+    inset 2px 2px 6px rgba(0, 0, 0, 0.40),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.10),
+    0 2px 12px rgba(108, 99, 255, 0.35);
+  cursor: grabbing;
+}
+
+/* Open state: slightly dimmed (panel is now visible) */
+.agent-fab-root--open .fab-btn {
+  transform: scale(0.96);
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.30),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.08),
+    0 2px 14px rgba(108, 99, 255, 0.30);
+}
+
+/* ── Inner Recess ────────────────────────────────────────── */
+
+.fab-inner {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+
+  /* Deep pressed inner recess */
+  background: radial-gradient(
+    circle at 40% 35%,
+    #5B54D8 0%,
+    #3F3AB0 45%,
+    #2B2880 100%
+  );
+
+  box-shadow:
+    /* inner top-left shadow = depth illusion */
+    inset 2px 2px 5px rgba(0, 0, 0, 0.55),
+    /* inner center highlight */
+    inset -1px -1px 3px rgba(255, 255, 255, 0.10),
+    /* white core glow */
+    0 0 10px 2px rgba(255, 255, 255, 0.06);
+}
+
+/* ── Icon ─────────────────────────────────────────────────── */
+
+.fab-icon {
+  color: rgba(255, 255, 255, 0.92);
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7))
+          drop-shadow(0 0 8px rgba(200, 180, 255, 0.5));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fab-btn:hover .fab-icon {
+  transform: scale(1.12) rotate(12deg);
+}
+
+/* ── Unread Badge ─────────────────────────────────────────── */
+
+.fab-badge {
   position: absolute;
   top: -2px;
   right: -2px;
-  width: 18px;
+  min-width: 18px;
   height: 18px;
-  border-radius: 50%;
-  background: var(--agent-error-color);
+  border-radius: 9px;
+  background: #F87171;
   color: white;
   font-size: 10px;
   font-weight: 700;
   display: grid;
   place-items: center;
-  border: 2px solid var(--agent-bg-base);
+  padding: 0 4px;
+  border: 2px solid #0D0F14;
+  pointer-events: none;
+  animation: badgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 10;
 }
 
-.agent-trigger--notify {
-  animation: triggerAlert 2s ease-in-out infinite;
+@keyframes badgePop {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
 }
 
-@keyframes triggerAlert {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.05); }
+/* ── Mobile: slightly smaller ─────────────────────────────── */
+
+@media (max-width: 768px) {
+  .agent-fab-root {
+    bottom: 20px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+  }
 }
 
 /* ── Panel Shell ────────────────────────────────────────────────────────── */
