@@ -108,3 +108,11 @@ extraction:
     url: ${EXTRACTION_SERVICE_URL:http://localhost:8000/extract-upload}
     health-url: ${EXTRACTION_HEALTH_URL:http://localhost:8000/health}
     timeout-seconds: ${EXTRACTION_TIMEOUT:120}
+
+# ── Agent AI Configuration ───────────────────────────────────
+agent:
+  llm-service-url: ${AGENT_LLM_SERVICE_URL:http://localhost:8001}
+  rate-limit-per-minute: ${AGENT_RATE_LIMIT_PER_MINUTE:20}
+  rate-limit-per-day: ${AGENT_RATE_LIMIT_PER_DAY:500}
+  max-context-messages: 20
+  stream-timeout-seconds: 60

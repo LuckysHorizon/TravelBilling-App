@@ -6,6 +6,7 @@ import { store } from './store'
 import { ThemeProvider } from './components/ThemeProvider'
 import App from './App'
 import './index.css'
+import './components/agent/agent.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

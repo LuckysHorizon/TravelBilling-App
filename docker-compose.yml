@@ -45,6 +45,7 @@ services:
       SERVER_PORT: 8080
       EXTRACTION_SERVICE_URL: http://pdf-extractor:8000/extract-upload
       EXTRACTION_HEALTH_URL: http://pdf-extractor:8000/health
+      AGENT_LLM_SERVICE_URL: http://agent-llm:8001
     depends_on:
       db:
         condition: service_healthy
@@ -71,6 +72,25 @@ services:
       start_period: 15s
       retries: 3
 
+  agent-llm:
+    build:
+      context: ./agent-llm
+      target: runner
+    container_name: travelbill-agent-llm
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env.development
+    environment:
+      SERVICE_PORT: 8001
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
   frontend:
     build:
       context: ./frontend
@@ -93,3 +113,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+

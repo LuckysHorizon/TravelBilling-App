@@ -1,0 +1,628 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   TravelBill AI Agent — Premium Dark Glass Theme
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design Tokens ──────────────────────────────────────────────────────── */
+
+:root {
+  --agent-bg: rgba(15, 15, 25, 0.95);
+  --agent-surface: rgba(30, 30, 50, 0.8);
+  --agent-border: rgba(99, 102, 241, 0.2);
+  --agent-primary: #6366f1;
+  --agent-primary-hover: #818cf8;
+  --agent-text: #e2e8f0;
+  --agent-text-muted: #94a3b8;
+  --agent-user-bubble: linear-gradient(135deg, #6366f1, #8b5cf6);
+  --agent-success: #22c55e;
+  --agent-warning: #f59e0b;
+  --agent-error: #ef4444;
+  --agent-radius: 12px;
+  --agent-radius-sm: 8px;
+  --agent-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --agent-glass-blur: blur(16px);
+}
+
+/* ── Floating Action Button ─────────────────────────────────────────────── */
+
+.agent-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  cursor: grab;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: none;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.agent-fab:hover {
+  box-shadow: 0 6px 28px rgba(99, 102, 241, 0.55);
+  transform: scale(1.08);
+}
+
+.agent-fab:active {
+  cursor: grabbing;
+}
+
+/* FAB States */
+.agent-fab--idle {
+  animation: agent-pulse 3s ease-in-out infinite;
+}
+
+.agent-fab--thinking {
+  animation: agent-gradient-rotate 2s linear infinite;
+  background: conic-gradient(
+    from 0deg,
+    #6366f1,
+    #8b5cf6,
+    #a78bfa,
+    #c084fc,
+    #8b5cf6,
+    #6366f1
+  );
+}
+
+/* Unread badge */
+.agent-fab-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--agent-error);
+  border: 2px solid white;
+  animation: agent-badge-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Tooltip */
+.agent-fab-tooltip {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 15, 25, 0.95);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--agent-border);
+}
+
+.agent-fab:hover .agent-fab-tooltip {
+  opacity: 1;
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────── */
+
+.agent-panel {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  width: 420px;
+  height: calc(100vh - 48px);
+  background: var(--agent-bg);
+  backdrop-filter: var(--agent-glass-blur);
+  -webkit-backdrop-filter: var(--agent-glass-blur);
+  border-left: 1px solid var(--agent-border);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.3);
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.agent-panel--open {
+  transform: translateX(0);
+}
+
+/* Panel Header */
+.agent-panel-header {
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--agent-border);
+  background: rgba(20, 20, 35, 0.9);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+.agent-panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--agent-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -0.01em;
+}
+
+.agent-panel-title-icon {
+  width: 26px;
+  height: 26px;
+  background: var(--agent-user-bubble);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Panel Body */
+.agent-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.25) transparent;
+}
+
+.agent-panel-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.agent-panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agent-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.25);
+  border-radius: 3px;
+}
+
+.agent-panel-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.4);
+}
+
+/* Panel Footer */
+.agent-panel-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--agent-border);
+  background: rgba(20, 20, 35, 0.9);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+/* Close Button */
+.agent-panel-close {
+  background: transparent;
+  border: none;
+  color: var(--agent-text-muted);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.agent-panel-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--agent-text);
+}
+
+/* ── Messages ───────────────────────────────────────────────────────────── */
+
+.agent-message {
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  animation: agent-message-in 0.3s ease-out;
+}
+
+.agent-message--user {
+  align-items: flex-end;
+}
+
+.agent-message--assistant {
+  align-items: flex-start;
+}
+
+.agent-message-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: var(--agent-radius);
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.agent-message-bubble--user {
+  background: var(--agent-user-bubble);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.agent-message-bubble--assistant {
+  background: var(--agent-surface);
+  color: var(--agent-text);
+  border: 1px solid var(--agent-border);
+  border-bottom-left-radius: 4px;
+}
+
+.agent-message-time {
+  font-size: 11px;
+  color: var(--agent-text-muted);
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+/* ── Code Blocks ────────────────────────────────────────────────────────── */
+
+.agent-message-bubble pre {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
+}
+
+.agent-message-bubble code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+}
+
+.agent-message-bubble pre code {
+  color: #e2e8f0;
+}
+
+.agent-message-bubble :not(pre) > code {
+  background: rgba(99, 102, 241, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--agent-primary-hover);
+}
+
+/* ── Tool Call Card ─────────────────────────────────────────────────────── */
+
+.agent-tool-card {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--agent-radius);
+  padding: 12px 16px;
+  max-width: 85%;
+  animation: agent-message-in 0.3s ease-out;
+}
+
+.agent-tool-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--agent-primary-hover);
+}
+
+.agent-tool-card-params {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--agent-text-muted);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Approval Card ──────────────────────────────────────────────────────── */
+
+.agent-approval-card {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--agent-radius);
+  padding: 16px;
+  max-width: 90%;
+  animation: agent-message-in 0.3s ease-out;
+}
+
+.agent-approval-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--agent-warning);
+  margin-bottom: 12px;
+}
+
+.agent-approval-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ── Error Card ─────────────────────────────────────────────────────────── */
+
+.agent-error-card {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--agent-radius);
+  padding: 10px 14px;
+  color: var(--agent-error);
+  font-size: 13px;
+  max-width: 85%;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  animation: agent-message-in 0.3s ease-out;
+}
+
+/* ── Streaming Cursor ───────────────────────────────────────────────────── */
+
+.agent-typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: var(--agent-primary);
+  margin-left: 2px;
+  animation: agent-blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+/* ── Input ──────────────────────────────────────────────────────────────── */
+
+.agent-input-wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.agent-input-wrapper .ant-input {
+  background: var(--agent-surface) !important;
+  border: 1px solid var(--agent-border) !important;
+  color: var(--agent-text) !important;
+  border-radius: var(--agent-radius-sm) !important;
+  resize: none !important;
+  font-size: 14px !important;
+}
+
+.agent-input-wrapper .ant-input::placeholder {
+  color: var(--agent-text-muted) !important;
+}
+
+.agent-input-wrapper .ant-input:focus,
+.agent-input-wrapper .ant-input-focused {
+  border-color: var(--agent-primary) !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+}
+
+.agent-send-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: var(--agent-radius-sm);
+  background: var(--agent-primary);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.agent-send-btn:hover:not(:disabled) {
+  background: var(--agent-primary-hover);
+  transform: translateY(-1px);
+}
+
+.agent-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.agent-char-count {
+  font-size: 11px;
+  color: var(--agent-text-muted);
+  text-align: right;
+  padding-right: 4px;
+  margin-top: 4px;
+}
+
+/* ── Empty State ────────────────────────────────────────────────────────── */
+
+.agent-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.agent-empty-state-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  color: var(--agent-primary);
+  opacity: 0.6;
+}
+
+.agent-empty-state-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--agent-text);
+  margin: 0 0 8px;
+}
+
+.agent-empty-state-subtitle {
+  font-size: 13px;
+  color: var(--agent-text-muted);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+/* ── Suggestion Chips ───────────────────────────────────────────────────── */
+
+.agent-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 340px;
+}
+
+.agent-suggestion-chip {
+  background: var(--agent-surface);
+  border: 1px solid var(--agent-border);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--agent-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.agent-suggestion-chip:hover {
+  border-color: var(--agent-primary);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--agent-primary-hover);
+  transform: translateY(-1px);
+}
+
+/* ── Provider Badge ─────────────────────────────────────────────────────── */
+
+.agent-provider-badge {
+  font-size: 11px;
+  color: var(--agent-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* ── Rate Limit Notice ──────────────────────────────────────────────────── */
+
+.agent-rate-limit {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--agent-radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--agent-warning);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 8px;
+  animation: agent-message-in 0.3s ease-out;
+  flex-shrink: 0;
+}
+
+/* ── Session Selector (Ant Design overrides) ────────────────────────────── */
+
+.agent-session-select .ant-select-selector {
+  background: var(--agent-surface) !important;
+  border-color: var(--agent-border) !important;
+  color: var(--agent-text) !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+}
+
+.agent-session-select .ant-select-arrow {
+  color: var(--agent-text-muted) !important;
+}
+
+.agent-session-select .ant-select-selection-item {
+  color: var(--agent-text) !important;
+}
+
+/* ── Keyframe Animations ────────────────────────────────────────────────── */
+
+@keyframes agent-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes agent-gradient-rotate {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes agent-badge-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+@keyframes agent-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes agent-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes agent-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .agent-panel {
+    width: 100vw;
+    top: 0;
+    height: 100vh;
+  }
+
+  .agent-fab-tooltip {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .agent-panel-header {
+    padding: 12px 14px;
+  }
+
+  .agent-panel-body {
+    padding: 12px 14px;
+  }
+
+  .agent-panel-footer {
+    padding: 10px 12px;
+  }
+}

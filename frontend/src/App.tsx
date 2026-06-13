@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from './store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from './store';
 import { checkAuthStatus } from './store/slices/authSlice';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './layouts/AppLayout';
@@ -21,9 +21,11 @@ import AuditLogs from './pages/AuditLogs';
 import BillingPanels from './pages/BillingPanels';
 import EmployeeBilling from './pages/EmployeeBilling';
 import SuperAdmin from './pages/SuperAdmin';
+import { AgentFAB } from './components/agent/AgentFAB';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   useEffect(() => {
     dispatch(checkAuthStatus());
@@ -72,6 +74,7 @@ function App() {
         
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      {isAuthenticated && <AgentFAB />}
     </BrowserRouter>
   );
 }
