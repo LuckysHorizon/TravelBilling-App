@@ -1,0 +1,135 @@
+name: Agent LLM - Build, Test & Deploy to Render
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent-llm/**'
+      - '.github/workflows/agent-llm.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'agent-llm/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-llm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/agent-llm
+
+jobs:
+  quality:
+    name: Lint & Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: agent-llm/requirements.txt
+
+      - name: Install dependencies
+        working-directory: agent-llm
+        run: |
+          pip install -r requirements.txt
+          pip install flake8
+
+      - name: Flake8 lint
+        working-directory: agent-llm
+        run: flake8 . --max-line-length=120
+
+      - name: Smoke test — verify app starts
+        working-directory: agent-llm
+        run: |
+          # Start uvicorn in background with a dummy key (won't call Groq)
+          GROQ_API_KEY_FALLBACK=test-key-ci uvicorn main:app --host 127.0.0.1 --port 8001 &
+          APP_PID=$!
+          sleep 3
+          # Hit the health endpoint
+          curl -f http://127.0.0.1:8001/health || (kill $APP_PID; exit 1)
+          kill $APP_PID
+
+  docker:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./agent-llm
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: ${{ vars.AGENT_LLM_PRODUCTION_URL }}
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ secrets.RENDER_AGENT_LLM_DEPLOY_HOOK_URL }}")
+          if [ "$RESPONSE" -ne 200 ] && [ "$RESPONSE" -ne 201 ]; then
+            echo "Render deploy hook failed with status: $RESPONSE"
+            exit 1
+          fi
+
+      - name: Wait & verify health
+        run: |
+          echo "Waiting 60s for Render cold start..."
+          sleep 60
+          MAX_RETRIES=10
+          RETRY=0
+          HEALTH_URL="${{ vars.AGENT_LLM_PRODUCTION_URL }}/health"
+          until curl -sf "$HEALTH_URL"; do
+            RETRY=$((RETRY+1))
+            if [ "$RETRY" -ge "$MAX_RETRIES" ]; then
+              echo "Agent LLM health check failed after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Health check retry $RETRY/$MAX_RETRIES..."
+            sleep 12
+          done
+          echo "Agent LLM is healthy!"

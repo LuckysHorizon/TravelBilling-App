@@ -101,6 +101,12 @@ app:
   rate-limit:
     ip: 500
     user: 200
+  keepalive:
+    enabled: ${KEEPALIVE_ENABLED:true}
+    cron: ${KEEPALIVE_CRON:0 0 */6 * * *}
+    connection-timeout-ms: ${KEEPALIVE_CONNECTION_TIMEOUT:10000}
+    max-threads: ${KEEPALIVE_MAX_THREADS:5}
+    retention-days: ${KEEPALIVE_RETENTION_DAYS:90}
 
 # ── Python PDF Extraction Microservice ───────────────────────
 extraction:

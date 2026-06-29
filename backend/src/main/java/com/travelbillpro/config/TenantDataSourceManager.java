@@ -126,24 +126,36 @@ public class TenantDataSourceManager {
         return msg;
     }
 
-    private HikariDataSource createDataSource(String dbUrl, String poolName) {
+    /**
+     * Parsed JDBC connection info — used by createDataSource and KeepAliveService.
+     */
+    public record JdbcUrlInfo(String jdbcUrl, String username, String password) {}
+
+    /**
+     * Parse a Supabase/PostgreSQL URI into JDBC connection details.
+     * Handles postgresql:// and postgres:// URI formats, extracts credentials,
+     * adds sslmode=require for remote hosts, and falls back gracefully.
+     *
+     * @param rawUrl the raw database URL (may be a Supabase URI or JDBC URL)
+     * @return parsed JDBC URL info with separated credentials
+     */
+    public static JdbcUrlInfo parseDbUrl(String rawUrl) {
         // Strip whitespace/newlines from URL (copy-paste artifact)
-        dbUrl = dbUrl.replaceAll("\\s+", "");
+        String dbUrl = rawUrl.replaceAll("\\s+", "");
 
-        HikariConfig config = new HikariConfig();
-
-        // Parse Supabase/PostgreSQL URI format: postgresql://user:pass@host:port/dbname
         if (dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://")) {
             try {
                 // Replace scheme to use java.net.URI parser
                 String httpUrl = dbUrl.replaceFirst("postgres(ql)?://", "http://");
                 java.net.URI uri = new java.net.URI(httpUrl);
 
+                String username = null;
+                String password = null;
                 String userInfo = uri.getUserInfo();
                 if (userInfo != null) {
                     String[] parts = userInfo.split(":", 2);
-                    config.setUsername(parts[0]);
-                    if (parts.length > 1) config.setPassword(parts[1]);
+                    username = parts[0];
+                    if (parts.length > 1) password = parts[1];
                 }
 
                 // Rebuild clean JDBC URL without credentials
@@ -163,19 +175,28 @@ public class TenantDataSourceManager {
                     jdbc.append("?sslmode=require");
                 }
 
-                String jdbcUrl = jdbc.toString();
-                config.setJdbcUrl(jdbcUrl);
-                log.info("Parsed DB URL → jdbc={}", jdbcUrl.replaceAll("password=[^&]*", "password=***"));
+                return new JdbcUrlInfo(jdbc.toString(), username, password);
             } catch (Exception e) {
                 log.warn("Failed to parse DB URL, using as-is: {}", e.getMessage());
                 String jdbc = dbUrl.replace("postgresql://", "jdbc:postgresql://")
                                    .replace("postgres://", "jdbc:postgresql://");
-                config.setJdbcUrl(jdbc);
+                return new JdbcUrlInfo(jdbc, null, null);
             }
         } else {
             // Already a JDBC URL or other format
-            config.setJdbcUrl(dbUrl);
+            return new JdbcUrlInfo(dbUrl, null, null);
         }
+    }
+
+    private HikariDataSource createDataSource(String dbUrl, String poolName) {
+        JdbcUrlInfo urlInfo = parseDbUrl(dbUrl);
+
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(urlInfo.jdbcUrl());
+        if (urlInfo.username() != null) config.setUsername(urlInfo.username());
+        if (urlInfo.password() != null) config.setPassword(urlInfo.password());
+
+        log.info("Parsed DB URL → jdbc={}", urlInfo.jdbcUrl().replaceAll("password=[^&]*", "password=***"));
 
         config.setPoolName(poolName);
         config.setMaximumPoolSize(2);
@@ -185,3 +206,4 @@ public class TenantDataSourceManager {
         return new HikariDataSource(config);
     }
 }
+
