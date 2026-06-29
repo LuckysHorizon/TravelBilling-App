@@ -85,8 +85,8 @@ jobs:
 
       - name: Verify PDF Extractor health
         if: ${{ inputs.deploy_pdf_extractor && needs.pdf-extractor.result == 'success' }}
-        run: curl -sf https://pdf-service.up.railway.app/health || echo "⚠️ PDF Extractor health check failed"
+        run: curl -sf "${{ vars.PDF_EXTRACTOR_PRODUCTION_URL }}/health" || echo "⚠️ PDF Extractor health check failed"
 
       - name: Verify Frontend
         if: ${{ inputs.deploy_frontend && needs.frontend.result == 'success' }}
-        run: curl -sf https://travelbilling.vercel.app || echo "⚠️ Frontend health check failed"
+        run: curl -sf https://travelbilling-app.vercel.app || echo "⚠️ Frontend health check failed"
