@@ -5,6 +5,16 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+    --transition-base: 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-brand-paper text-brand-dark antialiased;
     font-family: "Plus Jakarta Sans", sans-serif;
@@ -17,23 +27,34 @@
   code, pre, .mono {
     font-family: "JetBrains Mono", monospace;
   }
+
+  /* Global focus ring */
+  *:focus-visible {
+    outline: 2px solid #1a1a1a;
+    outline-offset: 2px;
+  }
 }
 
-/* Ant Design overrides that shouldn't conflict with Tailwind */
-.ant-btn-primary {
-  @apply bg-brand-dark hover:bg-black !important;
+@layer utilities {
+  .page-header {
+    @apply text-3xl font-serif text-brand-dark mb-1;
+  }
+  .page-subtitle {
+    @apply text-gray-500 mb-6;
+  }
+  .status-dot {
+    @apply w-2 h-2 rounded-full inline-block mr-2;
+  }
 }
 
-.ant-menu-dark {
-  @apply bg-brand-dark !important;
-}
-
-.ant-layout-sider {
-  @apply bg-brand-dark !important;
-}
-
-.ant-card {
-  @apply shadow-card border-none !important;
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Allow the upload dragger to keep its own border */
@@ -41,6 +62,7 @@
   border: 2px dashed #d1d5db !important;
   border-radius: 0.75rem !important;
   background: linear-gradient(135deg, #f9fafb, #ffffff) !important;
+  transition: all var(--transition-base) !important;
 }
 
 .ant-upload-wrapper .ant-upload-drag:hover {
@@ -73,4 +95,3 @@
   max-height: 70vh;
   overflow-y: auto;
 }
-

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Tooltip, Modal, Form, InputNumber, message } from 'antd';
+import { Card, Table, Button, Input, Tag, Tooltip, Modal, Form, InputNumber, message, Empty } from 'antd';
 import { Search, Download, Mail, FileSpreadsheet, FileText, Edit3 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosInstance';
+import { getStatusTag, formatCurrency } from '../lib/statusUtils';
 
 const InvoiceList = () => {
   const [page, setPage] = useState(0);
@@ -115,22 +116,6 @@ const InvoiceList = () => {
     });
   };
 
-  const getStatusTag = (status: string) => {
-    switch(status) {
-      case 'DRAFT': return <Tag color="default">Draft</Tag>;
-      case 'GENERATED': return <Tag color="processing">Generated</Tag>;
-      case 'SENT': return <Tag color="blue">Sent</Tag>;
-      case 'PAID': return <Tag color="success">Paid</Tag>;
-      case 'CANCELLED': return <Tag color="error">Cancelled</Tag>;
-      default: return <Tag color="default">{status}</Tag>;
-    }
-  };
-
-  const formatCurrency = (amount: number | null) =>
-    amount != null
-      ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)
-      : '—';
-
   const columns = [
     {
       title: 'Invoice Number',
@@ -172,7 +157,10 @@ const InvoiceList = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => getStatusTag(status)
+      render: (status: string) => {
+        const tag = getStatusTag(status);
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      }
     },
     {
       title: 'Actions',
@@ -183,17 +171,17 @@ const InvoiceList = () => {
           <Tooltip title="Download PDF">
             <Button 
               type="text" 
-              icon={<FileText size={15} className="text-gray-500 hover:text-brand-dark" />} 
+              icon={<FileText size={16} className="text-gray-400 hover:text-brand-dark transition-colors" />} 
               onClick={() => handleDownloadPdf(record.id)}
-              size="small"
+              className="w-8 h-8 flex items-center justify-center p-0"
             />
           </Tooltip>
           <Tooltip title="Download Excel">
             <Button 
               type="text" 
-              icon={<FileSpreadsheet size={15} className="text-green-600 hover:text-green-800" />} 
+              icon={<FileSpreadsheet size={16} className="text-gray-400 hover:text-green-600 transition-colors" />} 
               onClick={() => handleDownloadExcel(record.id)}
-              size="small"
+              className="w-8 h-8 flex items-center justify-center p-0"
             />
           </Tooltip>
           {/* Edit button — only for DRAFT/GENERATED */}
@@ -201,9 +189,9 @@ const InvoiceList = () => {
             <Tooltip title="Edit Invoice Totals">
               <Button 
                 type="text" 
-                icon={<Edit3 size={15} className="text-orange-500 hover:text-orange-700" />} 
+                icon={<Edit3 size={16} className="text-gray-400 hover:text-brand-gold transition-colors" />} 
                 onClick={() => handleEditInvoice(record)}
-                size="small"
+                className="w-8 h-8 flex items-center justify-center p-0"
               />
             </Tooltip>
           )}
@@ -212,17 +200,16 @@ const InvoiceList = () => {
               <Tooltip title="Send Email">
                 <Button 
                   type="text" 
-                  icon={<Mail size={15} className="text-blue-500 hover:text-blue-700" />} 
+                  icon={<Mail size={16} className="text-gray-400 hover:text-brand-accent transition-colors" />} 
                   onClick={() => sendEmailMutation.mutate(record.id)}
                   loading={sendEmailMutation.isPending}
-                  size="small"
+                  className="w-8 h-8 flex items-center justify-center p-0"
                 />
               </Tooltip>
               <Tooltip title="Mark as Paid">
                 <Button 
-                  type="link"
-                  size="small"
-                  className="text-green-600 hover:text-green-800 text-xs p-0"
+                  type="text"
+                  className="text-status-success hover:text-status-success hover:bg-green-50 text-xs px-2 h-8 font-medium ml-1"
                   onClick={() => markPaidMutation.mutate(record.id)}
                 >
                   Mark Paid
@@ -236,7 +223,7 @@ const InvoiceList = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-serif text-brand-dark mb-1">Invoices</h1>
@@ -244,12 +231,12 @@ const InvoiceList = () => {
         </div>
       </div>
 
-      <Card className="min-h-[500px]">
+      <Card className="min-h-[500px] animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <Input 
             prefix={<Search className="text-gray-400" size={16} />} 
             placeholder="Search by Invoice Number..." 
-            className="max-w-sm rounded-lg"
+            className="max-w-sm rounded-lg hover:border-brand-dark focus:border-brand-dark transition-colors"
           />
         </div>
 
@@ -267,6 +254,9 @@ const InvoiceList = () => {
               setSize(s);
             },
             showSizeChanger: true
+          }}
+          locale={{
+            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No invoices found" />
           }}
         />
       </Card>

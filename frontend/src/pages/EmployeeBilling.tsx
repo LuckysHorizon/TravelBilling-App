@@ -277,8 +277,7 @@ const EmployeeBilling = () => {
 
   // === STYLES ===
   const S: Record<string, React.CSSProperties> = {
-    wrap: { padding: 24, maxWidth: 1200, margin: '0 auto' },
-    invWrap: { background: '#fff', border: '1px solid #d9d9d9', padding: 24, marginTop: 16, fontFamily: 'Calibri, Arial, sans-serif', fontSize: 12, lineHeight: 1.6, maxWidth: 900, margin: '16px auto' },
+    invWrap: { background: '#fff', border: '1px solid #d9d9d9', padding: 24, marginTop: 16, fontFamily: 'Calibri, Arial, sans-serif', fontSize: 12, lineHeight: 1.6, maxWidth: 900, margin: '16px auto', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' },
     headerRow: { display: 'flex', border: '1px solid #000' },
     headerLeft: { flex: 1, padding: '6px 8px', borderRight: '1px solid #000' },
     headerRight: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 'bold', padding: 8 },
@@ -298,15 +297,15 @@ const EmployeeBilling = () => {
   };
 
   return (
-    <div style={S.wrap}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <UserRoundSearch size={28} color="#1677ff" />
-        <Title level={3} style={{ margin: 0 }}>Employee Travel Billing</Title>
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+      <div className="flex items-center gap-3">
+        <UserRoundSearch size={28} className="text-brand-dark" />
+        <h1 className="text-3xl font-serif text-brand-dark m-0">Employee Travel Billing</h1>
       </div>
 
       {/* Step 1: Company */}
-      <Card title={<><Building2 size={16} style={{ marginRight: 8 }} />Select Company</>} size="small" style={{ marginBottom: 12 }}>
-        <Select showSearch placeholder="Search company..." style={{ width: '100%', maxWidth: 500 }}
+      <Card title={<span className="flex items-center gap-2 font-serif text-lg text-brand-dark"><Building2 size={18}/> Select Company</span>} className="shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+        <Select showSearch placeholder="Search company..." className="w-full max-w-lg" size="large"
           loading={companiesLoading} value={selectedCompanyId}
           onChange={(v: number) => setSelectedCompanyId(v)}
           filterOption={(input: string, option: any) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -316,9 +315,9 @@ const EmployeeBilling = () => {
 
       {/* Step 2: Passenger */}
       {selectedCompanyId && (
-        <Card title="Select Employee (from Approved Tickets)" size="small" style={{ marginBottom: 12 }}>
-          {passengersLoading ? <Spin /> : passengers.length === 0 ? <Empty description="No approved tickets" /> : (
-            <Select showSearch placeholder="Select passenger..." style={{ width: '100%', maxWidth: 500 }}
+        <Card title={<span className="font-serif text-lg text-brand-dark">Select Employee (from Approved Tickets)</span>} className="shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+          {passengersLoading ? <Spin /> : passengers.length === 0 ? <Empty description="No approved tickets" image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+            <Select showSearch placeholder="Select passenger..." className="w-full max-w-lg" size="large"
               value={selectedPassenger} onChange={(v: string) => setSelectedPassenger(v)}
               filterOption={(input: string, option: any) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
               options={passengers.map((p: string) => ({ value: p, label: p }))} allowClear onClear={() => setSelectedPassenger(null)}
@@ -329,26 +328,25 @@ const EmployeeBilling = () => {
 
       {/* Step 3: Date Range */}
       {selectedPassenger && (
-        <Card title="Billing Period" size="small" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Calendar size={18} color="#8c8c8c" />
-            <RangePicker onChange={handleDateRangeChange} format="DD/MM/YYYY" style={{ width: 320 }} />
+        <Card title={<span className="font-serif text-lg text-brand-dark">Billing Period</span>} className="shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
+          <div className="flex items-center gap-3">
+            <Calendar size={18} className="text-brand-dark" />
+            <RangePicker onChange={handleDateRangeChange} format="DD/MM/YYYY" className="w-full max-w-sm hover:border-brand-dark focus:border-brand-dark transition-colors" size="large" />
           </div>
         </Card>
       )}
 
       {/* WYSIWYG Invoice Preview */}
-      {ticketsLoading && <Card style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></Card>}
+      {ticketsLoading && <Card className="text-center p-10 shadow-sm border border-gray-100"><Spin size="large" /></Card>}
       {inv && !ticketsLoading && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 }}>
-            <Text strong style={{ fontSize: 16 }}>📄 Invoice Preview (click any field to edit)</Text>
-            <Space>
-              <Button icon={<RotateCcw size={14} />} onClick={handleReset}>Reset</Button>
-              <Button type="primary" icon={<Download size={16} />} onClick={() => handleExport('xlsx')} loading={loading}
-                style={{ background: '#52c41a', borderColor: '#52c41a' }}>Download Excel</Button>
-              <Button type="primary" icon={<FileText size={16} />} onClick={() => handleExport('pdf')} loading={loading}>Download PDF</Button>
-            </Space>
+        <div className="animate-slide-up" style={{ animationDelay: '400ms', animationFillMode: 'both' }}>
+          <div className="flex justify-between items-center mt-6 mb-2">
+            <h3 className="font-serif text-brand-dark text-lg m-0">📄 Invoice Preview <span className="text-sm font-sans text-gray-400 font-normal ml-2">(click any field to edit)</span></h3>
+            <div className="flex gap-2">
+              <Button icon={<RotateCcw size={14} />} onClick={handleReset} className="font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Reset</Button>
+              <Button type="primary" icon={<Download size={16} />} onClick={() => handleExport('xlsx')} loading={loading} className="bg-green-600 hover:bg-green-700 border-none font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Download Excel</Button>
+              <Button type="primary" icon={<FileText size={16} />} onClick={() => handleExport('pdf')} loading={loading} className="bg-brand-dark hover:bg-black border-none font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Download PDF</Button>
+            </div>
           </div>
 
           <div style={S.invWrap}>
@@ -467,13 +465,13 @@ const EmployeeBilling = () => {
           </div>
 
           {/* Bottom buttons */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 16, marginBottom: 24 }}>
-            <Button icon={<RotateCcw size={14} />} onClick={handleReset} size="large">Reset to Original</Button>
+          <div className="flex justify-center gap-4 mt-6 mb-10">
+            <Button icon={<RotateCcw size={14} />} onClick={handleReset} size="large" className="font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Reset to Original</Button>
             <Button type="primary" icon={<Download size={16} />} onClick={() => handleExport('xlsx')} loading={loading} size="large"
-              style={{ background: '#52c41a', borderColor: '#52c41a' }}>Download Excel (.xlsx)</Button>
-            <Button type="primary" icon={<FileText size={16} />} onClick={() => handleExport('pdf')} loading={loading} size="large">Download PDF</Button>
+              className="bg-green-600 hover:bg-green-700 border-none font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Download Excel (.xlsx)</Button>
+            <Button type="primary" icon={<FileText size={16} />} onClick={() => handleExport('pdf')} loading={loading} size="large" className="bg-brand-dark hover:bg-black border-none font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Download PDF</Button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

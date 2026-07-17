@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Form, Input, Button, Alert } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { User, Lock } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppDispatch, RootState } from '../store';
@@ -32,17 +32,19 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-brand-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in">
         <h2 className="mt-6 text-center text-3xl font-extrabold font-serif text-brand-dark">
           TravelBill Pro
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-500">
           Sign in to your agency workspace
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-elevated rounded-2xl sm:px-10 border border-gray-100">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md animate-slide-up">
+        <div className="bg-white py-8 px-4 shadow-elevated rounded-2xl sm:px-10 border border-gray-200/60 backdrop-blur-sm relative overflow-hidden">
+          {/* Subtle top accent line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-gold/50 via-brand-gold to-brand-gold/50" />
           
           {error && (
             <Alert 
@@ -67,9 +69,9 @@ const Login = () => {
               rules={[{ required: true, message: 'Please input your Username!' }]}
             >
               <Input 
-                prefix={<UserOutlined className="text-gray-400" />} 
+                prefix={<User size={18} className="text-gray-400 mr-1" />} 
                 placeholder="admin" 
-                className="rounded-lg"
+                className="rounded-lg hover:border-brand-dark focus:border-brand-dark transition-colors"
                 autoComplete="username"
               />
             </Form.Item>
@@ -80,18 +82,18 @@ const Login = () => {
               rules={[{ required: true, message: 'Please input your Password!' }]}
             >
               <Input.Password 
-                prefix={<LockOutlined className="text-gray-400" />} 
+                prefix={<Lock size={18} className="text-gray-400 mr-1" />} 
                 placeholder="••••••••" 
-                className="rounded-lg"
+                className="rounded-lg hover:border-brand-dark focus:border-brand-dark transition-colors"
                 autoComplete="current-password"
               />
             </Form.Item>
 
-            <Form.Item className="mt-6 mb-0">
+            <Form.Item className="mt-8 mb-0">
               <Button 
                 type="primary" 
                 htmlType="submit" 
-                className="w-full bg-brand-dark hover:bg-black border-none rounded-lg h-11 text-base font-semibold transition-all shadow-md hover:shadow-lg"
+                className="w-full bg-brand-dark hover:bg-black border-none rounded-lg h-11 text-base font-semibold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 loading={isLoading}
               >
                 Sign in

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Modal, Form, Select, InputNumber, message } from 'antd';
+import { Card, Table, Button, Input, Tag, Modal, Form, Select, InputNumber, message, Empty } from 'antd';
 import { Search, Plus, Building2, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanies } from '../api/queries';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
+import { getStatusTag } from '../lib/statusUtils';
 
 const CompanyList = () => {
   const [page, setPage] = useState(0);
@@ -37,12 +38,12 @@ const CompanyList = () => {
       key: 'name',
       render: (_: any, record: any) => (
         <div className="flex items-center gap-3">
-          <div className="bg-brand-paper p-2 rounded-lg text-brand-dark">
+          <div className="bg-brand-paper p-2.5 rounded-xl text-brand-dark border border-gray-100 shadow-sm">
             <Building2 size={16} />
           </div>
-          <div>
-            <div className="font-semibold text-brand-dark">{record.name}</div>
-            <div className="text-xs text-gray-500">Contact: {record.contactName || 'N/A'}</div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-brand-dark leading-tight">{record.name}</span>
+            <span className="text-xs text-gray-500 mt-0.5">Contact: {record.contactName || 'N/A'}</span>
           </div>
         </div>
       )
@@ -67,7 +68,10 @@ const CompanyList = () => {
       title: 'Status',
       dataIndex: 'active',
       key: 'status',
-      render: (active: boolean) => active ? <Tag color="success">Active</Tag> : <Tag color="error">Inactive</Tag>
+      render: (active: boolean) => {
+        const tag = getStatusTag(active ? 'ACTIVE' : 'INACTIVE');
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      }
     },
     {
       title: 'Billing Cycle',
@@ -91,7 +95,7 @@ const CompanyList = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-serif text-brand-dark mb-1">Companies</h1>
@@ -100,19 +104,19 @@ const CompanyList = () => {
         <Button 
           type="primary" 
           icon={<Plus size={16} />} 
-          className="bg-brand-dark hover:bg-black font-medium"
+          className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
           onClick={() => { form.resetFields(); setModalOpen(true); }}
         >
           Add Company
         </Button>
       </div>
 
-      <Card className="min-h-[500px]">
+      <Card className="min-h-[500px] animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
         <div className="flex justify-between items-center mb-6">
           <Input 
             prefix={<Search className="text-gray-400" size={16} />} 
             placeholder="Search companies by name or GSTIN..." 
-            className="max-w-md rounded-lg"
+            className="max-w-md rounded-lg hover:border-brand-dark focus:border-brand-dark transition-colors"
           />
         </div>
 
@@ -130,6 +134,9 @@ const CompanyList = () => {
               setSize(s);
             },
             showSizeChanger: true
+          }}
+          locale={{
+            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No companies found" />
           }}
         />
       </Card>

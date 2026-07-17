@@ -103,7 +103,7 @@ const SystemSettings = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
       <div>
         <h1 className="text-3xl font-serif text-brand-dark mb-1">System Settings</h1>
         <p className="text-gray-500">Configure organization profile, billing charges, bank details, and SMTP.</p>
@@ -115,7 +115,7 @@ const SystemSettings = () => {
         onFinish={(values) => saveConfigMutation.mutate(values)}
       >
         {/* ── Agency / Organization Profile ── */}
-        <Card title={<span className="flex items-center gap-2 font-serif text-lg"><Building2 size={18}/> Organization Profile</span>} className="mb-6">
+        <Card title={<span className="flex items-center gap-2 font-serif text-lg text-brand-dark"><Building2 size={18}/> Organization Profile</span>} className="mb-6 shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
           <p className="text-gray-400 text-xs mb-4">These details appear on all generated invoices (header, footer, and signatory line).</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
             <Form.Item label="Organization Name" name="agencyName" rules={[{ required: true, message: 'Organization name is required' }]}
@@ -143,7 +143,7 @@ const SystemSettings = () => {
         </Card>
 
         {/* ── Bank Details ── */}
-        <Card title={<span className="flex items-center gap-2 font-serif text-lg"><Landmark size={18}/> Bank Details</span>} className="mb-6">
+        <Card title={<span className="flex items-center gap-2 font-serif text-lg text-brand-dark"><Landmark size={18}/> Bank Details</span>} className="mb-6 shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
           <p className="text-gray-400 text-xs mb-4">Bank details printed in the "OUR BANK DETAILS" section of every invoice.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
             <Form.Item label="A/C Holder Name" name="bankAccountName" rules={[{ required: true, message: 'Account holder name is required' }]}>
@@ -165,7 +165,7 @@ const SystemSettings = () => {
         </Card>
 
         {/* ── Billing Configuration ── */}
-        <Card title={<span className="flex items-center gap-2 font-serif text-lg"><IndianRupee size={18}/> Billing Configuration (₹ per Ticket)</span>} className="mb-6">
+        <Card title={<span className="flex items-center gap-2 font-serif text-lg text-brand-dark"><IndianRupee size={18}/> Billing Configuration (₹ per Ticket)</span>} className="mb-6 shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
           <p className="text-gray-500 text-sm mb-4">These flat ₹ amounts will be applied to each ticket during extraction and billing. Update these to change how new tickets are calculated.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6">
             <Form.Item label="Service Charge per Ticket (₹)" name="serviceChargePerTicket" rules={[{ required: true }]}>
@@ -181,7 +181,7 @@ const SystemSettings = () => {
         </Card>
 
         {/* ── SMTP Configuration ── */}
-        <Card title={<span className="flex items-center gap-2 font-serif text-lg"><Server size={18}/> SMTP Configuration</span>} className="mb-6">
+        <Card title={<span className="flex items-center gap-2 font-serif text-lg text-brand-dark"><Server size={18}/> SMTP Configuration</span>} className="mb-6 shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '400ms', animationFillMode: 'both' }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
             <Form.Item label="SMTP Host" name="smtpHost">
               <Input />
@@ -198,9 +198,9 @@ const SystemSettings = () => {
           </div>
         </Card>
 
-        <div className="flex justify-end gap-3 pb-12">
-          <Button onClick={() => form.resetFields()}>Discard Changes</Button>
-          <Button type="primary" htmlType="submit" className="bg-brand-dark" loading={saveConfigMutation.isPending}>
+        <div className="flex justify-end gap-3 pb-12 animate-slide-up" style={{ animationDelay: '500ms', animationFillMode: 'both' }}>
+          <Button onClick={() => form.resetFields()} className="font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Discard Changes</Button>
+          <Button type="primary" htmlType="submit" className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5" loading={saveConfigMutation.isPending}>
             Save Configuration
           </Button>
         </div>

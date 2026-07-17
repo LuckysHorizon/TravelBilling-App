@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Tag, Space, Typography, Tooltip, message, Popconfirm, Result } from 'antd';
-import { Plus, Building2, Globe, Database, Check, X, Pause, Play, TestTube, RefreshCw, Trash2 } from 'lucide-react';
+import { Card, Table, Button, Modal, Form, Input, Tag, Space, Typography, Tooltip, message, Popconfirm, Result, Empty } from 'antd';
+import { Plus, Building2, Globe, Database, Play, TestTube, RefreshCw, Trash2, PauseCircle } from 'lucide-react';
 import api from '../api/axiosInstance';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 interface Organization {
   id: number;
@@ -148,7 +148,7 @@ const SuperAdmin = () => {
           )}
           {record.status === 'ACTIVE' && record.slug !== 'default' && (
             <Popconfirm title="Suspend this organization?" onConfirm={() => handleSuspend(record.id)}>
-              <Tooltip title="Suspend"><Button size="small" danger icon={<Pause size={14} />} /></Tooltip>
+              <Tooltip title="Suspend"><Button size="small" danger icon={<PauseCircle size={14} />} /></Tooltip>
             </Popconfirm>
           )}
           {record.status === 'SUSPENDED' && (
@@ -175,39 +175,39 @@ const SuperAdmin = () => {
   ];
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Globe size={28} color="#722ed1" />
-          <Title level={3} style={{ margin: 0, color: '#722ed1' }}>Super Admin Console</Title>
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Globe size={28} className="text-brand-dark" />
+          <h1 className="text-3xl font-serif text-brand-dark m-0">Super Admin Console</h1>
         </div>
-        <Space>
-          <Button icon={<RefreshCw size={14} />} onClick={fetchOrgs} loading={loading}>Refresh</Button>
-          <Button type="primary" icon={<Plus size={16} />} onClick={() => setCreateModalOpen(true)}
-            style={{ background: '#722ed1', borderColor: '#722ed1' }}>
+        <div className="flex gap-3 items-center">
+          <Button icon={<RefreshCw size={14} />} onClick={fetchOrgs} loading={loading} className="font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Refresh</Button>
+          <Button type="primary" icon={<Plus size={16} />} onClick={() => setCreateModalOpen(true)} className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
             New Organization
           </Button>
-        </Space>
+        </div>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
         {[
-          { label: 'Total Orgs', value: orgs.length, color: '#722ed1' },
-          { label: 'Active', value: orgs.filter(o => o.status === 'ACTIVE').length, color: '#52c41a' },
-          { label: 'Suspended', value: orgs.filter(o => o.status === 'SUSPENDED').length, color: '#faad14' },
-          { label: 'Failed', value: orgs.filter(o => o.status === 'FAILED').length, color: '#ff4d4f' },
+          { label: 'Total Orgs', value: orgs.length, color: 'border-brand-dark', text: 'text-brand-dark' },
+          { label: 'Active', value: orgs.filter(o => o.status === 'ACTIVE').length, color: 'border-green-500', text: 'text-green-500' },
+          { label: 'Suspended', value: orgs.filter(o => o.status === 'SUSPENDED').length, color: 'border-orange-500', text: 'text-orange-500' },
+          { label: 'Failed', value: orgs.filter(o => o.status === 'FAILED').length, color: 'border-red-500', text: 'text-red-500' },
         ].map((stat, i) => (
-          <Card key={i} size="small" style={{ flex: 1, borderTop: `3px solid ${stat.color}` }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>{stat.label}</Text>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: stat.color }}>{stat.value}</div>
+          <Card key={i} size="small" className={`shadow-sm border-t-4 border-l-0 border-r-0 border-b-0 ${stat.color} rounded-lg`}>
+            <p className="text-xs text-gray-500 mb-1">{stat.label}</p>
+            <p className={`text-3xl font-bold ${stat.text}`}>{stat.value}</p>
           </Card>
         ))}
       </div>
 
-      <Card title={<><Building2 size={16} style={{ marginRight: 8 }} />Organizations</>}>
+      <Card title={<span className="flex items-center gap-2 font-serif text-lg text-brand-dark"><Building2 size={18}/> Organizations</span>} className="shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
         <Table dataSource={orgs} columns={columns} rowKey="id" loading={loading}
-          pagination={false} size="middle" />
+          pagination={false} size="middle" locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No organizations found" /> }} />
       </Card>
 
       {/* Create Org Modal */}
@@ -248,10 +248,9 @@ const SuperAdmin = () => {
             <Input placeholder="admin@acmecorp.com" />
           </Form.Item>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-            <Button onClick={() => { setCreateModalOpen(false); form.resetFields(); }}>Cancel</Button>
-            <Button type="primary" htmlType="submit" loading={creating}
-              style={{ background: '#722ed1', borderColor: '#722ed1' }}>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button onClick={() => { setCreateModalOpen(false); form.resetFields(); }} className="font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Cancel</Button>
+            <Button type="primary" htmlType="submit" loading={creating} className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
               Create & Provision
             </Button>
           </div>

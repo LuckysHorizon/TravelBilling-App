@@ -3,6 +3,7 @@ import { Card, Table, Button, Modal, Form, Input, Select, Tag, Statistic, Empty,
 import { Plus, FileText, Trash2, Receipt } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
+import { getStatusTag, formatCurrency } from '../lib/statusUtils';
 
 const BillingPanels = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -111,32 +112,19 @@ const BillingPanels = () => {
     onError: (err: any) => message.error(err.response?.data?.message || 'Failed to delete panel'),
   });
 
-  const formatCurrency = (amount: number) => 
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount || 0);
-
-  const getStatusTag = (status: string) => {
-    switch(status) {
-      case 'OPEN': return <Tag color="green">Open</Tag>;
-      case 'CLOSED': return <Tag color="default">Closed</Tag>;
-      case 'INVOICED': return <Tag color="blue">Invoiced</Tag>;
-      default: return <Tag>{status}</Tag>;
-    }
-  };
-
   const ticketColumns = [
     { title: 'Date', dataIndex: 'travelDate', key: 'date' },
-    { title: 'PNR', dataIndex: 'pnrNumber', key: 'pnr', render: (t: string) => <span className="font-mono">{t}</span> },
+    { title: 'PNR', dataIndex: 'pnrNumber', key: 'pnr', render: (t: string) => <span className="font-mono font-medium text-brand-dark">{t}</span> },
     { title: 'Passenger', dataIndex: 'passengerName', key: 'passenger' },
-    { title: 'Route', key: 'route', render: (r: any) => `${r.origin || ''} → ${r.destination || ''}` },
+    { title: 'Route', key: 'route', render: (r: any) => <span className="text-gray-600">{r.origin || ''} → {r.destination || ''}</span> },
     { title: 'Base Fare', dataIndex: 'baseFare', key: 'fare', render: (a: number) => formatCurrency(a) },
     { title: 'Service Chg', dataIndex: 'serviceCharge', key: 'sc', render: (a: number) => formatCurrency(a) },
     { title: 'CGST', dataIndex: 'cgst', key: 'cgst', render: (a: number) => formatCurrency(a) },
     { title: 'SGST', dataIndex: 'sgst', key: 'sgst', render: (a: number) => formatCurrency(a) },
-    { title: 'Total', dataIndex: 'totalAmount', key: 'total', render: (a: number) => <strong>{formatCurrency(a)}</strong> },
+    { title: 'Total', dataIndex: 'totalAmount', key: 'total', render: (a: number) => <strong className="text-brand-dark">{formatCurrency(a)}</strong> },
   ];
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -146,7 +134,7 @@ const BillingPanels = () => {
         <Button
           type="primary"
           icon={<Plus size={16} />}
-          className="bg-brand-dark hover:bg-black font-medium"
+          className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
           onClick={() => setCreateModalOpen(true)}
         >
           New Panel
@@ -157,27 +145,31 @@ const BillingPanels = () => {
       {isLoading ? (
         <Card loading />
       ) : !panels || panels.length === 0 ? (
-        <Card>
+        <Card className="animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
           <Empty description="No billing panels yet. Create one to start grouping tickets." />
         </Card>
       ) : (
         <div className="space-y-4">
-          {panels.map((panel: any) => (
+          {panels.map((panel: any, index: number) => {
+            const statusTag = getStatusTag(panel.status);
+            return (
             <Card
               key={panel.id}
+              className="shadow-sm border border-gray-100 animate-slide-up"
+              style={{ animationDelay: `${index * 100 + 100}ms`, animationFillMode: 'both' }}
               title={
                 <div className="flex items-center gap-3">
                   <Receipt size={18} className="text-brand-dark" />
                   <span className="text-lg font-serif">{panel.label}</span>
-                  {getStatusTag(panel.status)}
+                  <Tag color={statusTag.color}>{statusTag.label}</Tag>
                 </div>
               }
               extra={
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 mr-2">{panel.companyName}</span>
+                  <span className="text-sm font-medium text-brand-dark bg-brand-paper px-3 py-1 rounded-full mr-2">{panel.companyName}</span>
                   {panel.status === 'OPEN' && (
                     <>
-                      <Button size="small" onClick={() => { setSelectedPanelId(panel.id); setAddTicketsModalOpen(true); }}>
+                      <Button size="small" onClick={() => { setSelectedPanelId(panel.id); setAddTicketsModalOpen(true); }} className="hover:text-brand-dark hover:border-brand-dark">
                         + Add Tickets
                       </Button>
                       <Popconfirm
@@ -187,7 +179,7 @@ const BillingPanels = () => {
                         okText="Generate"
                         okButtonProps={{ className: 'bg-brand-dark' }}
                       >
-                        <Button type="primary" size="small" className="bg-brand-dark" loading={generateInvoiceMutation.isPending}>
+                        <Button type="primary" size="small" className="bg-brand-dark hover:bg-black border-none shadow-sm" loading={generateInvoiceMutation.isPending}>
                           Generate Invoice
                         </Button>
                       </Popconfirm>
@@ -241,7 +233,8 @@ const BillingPanels = () => {
                 <Empty description="No tickets added yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -281,7 +274,7 @@ const BillingPanels = () => {
           }
         }}
         okText={`Add ${selectedTicketIds.length} Ticket(s)`}
-        okButtonProps={{ className: 'bg-brand-dark', disabled: selectedTicketIds.length === 0 }}
+        okButtonProps={{ className: 'bg-brand-dark hover:bg-black', disabled: selectedTicketIds.length === 0 }}
         confirmLoading={addTicketsMutation.isPending}
       >
         <p className="text-gray-500 mb-4">Select approved tickets to add to this panel:</p>

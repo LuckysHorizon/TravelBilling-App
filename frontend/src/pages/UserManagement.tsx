@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Select, Modal, Form, message } from 'antd';
-import { Search, Plus, UserCog } from 'lucide-react';
+import { useState } from 'react';
+import { Card, Table, Button, Input, Tag, Select, Modal, Form, message, Empty } from 'antd';
+import { Search, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
+import { getStatusTag } from '../lib/statusUtils';
 
 const UserManagement = () => {
   const [page, setPage] = useState(0);
@@ -64,14 +65,7 @@ const UserManagement = () => {
     },
   });
 
-  const getRoleTag = (role: string) => {
-    switch(role) {
-      case 'ADMIN': return <Tag color="red">Admin</Tag>;
-      case 'BILLING_STAFF': return <Tag color="blue">Billing</Tag>;
-      case 'VIEWER': return <Tag color="default">Viewer</Tag>;
-      default: return <Tag>{role}</Tag>;
-    }
-  };
+
 
   const columns = [
     {
@@ -89,26 +83,32 @@ const UserManagement = () => {
       title: 'Role',
       dataIndex: 'role',
       key: 'role',
-      render: (role: string) => getRoleTag(role)
+      render: (role: string) => {
+        const tag = getStatusTag(role);
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      }
     },
     {
       title: 'Status',
       dataIndex: 'isActive',
       key: 'status',
-      render: (active: boolean) => active ? <Tag color="success">Active</Tag> : <Tag color="error">Deactivated</Tag>
+      render: (active: boolean) => {
+        const tag = getStatusTag(active ? 'ACTIVE' : 'INACTIVE');
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      }
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_: any, record: any) => (
         <div className="flex gap-2">
-          <Button type="link" className="text-brand-accent px-0" onClick={() => {
+          <Button type="link" className="text-brand-dark hover:text-brand-gold font-medium px-0 transition-colors" onClick={() => {
             setEditingUser(record);
             form.setFieldsValue({ email: record.email, role: record.role });
             setModalOpen(true);
           }}>Edit</Button>
           {record.isActive && record.username !== 'admin' && (
-            <Button type="link" danger className="px-0" onClick={() => deactivateUserMutation.mutate(record.id)}>Deactivate</Button>
+            <Button type="link" danger className="px-0 font-medium" onClick={() => deactivateUserMutation.mutate(record.id)}>Deactivate</Button>
           )}
         </div>
       )
@@ -124,27 +124,32 @@ const UserManagement = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-serif text-brand-dark mb-1">User Management</h1>
           <p className="text-gray-500">Manage agency staff access and roles.</p>
         </div>
-        <Button type="primary" icon={<Plus size={16} />} className="bg-brand-dark" onClick={() => {
-          setEditingUser(null);
-          form.resetFields();
-          setModalOpen(true);
-        }}>
+        <Button 
+          type="primary" 
+          icon={<Plus size={16} />} 
+          className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5" 
+          onClick={() => {
+            setEditingUser(null);
+            form.resetFields();
+            setModalOpen(true);
+          }}
+        >
           Add User
         </Button>
       </div>
 
-      <Card className="min-h-[500px]">
+      <Card className="min-h-[500px] animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
         <div className="flex justify-between items-center mb-6">
           <Input 
             prefix={<Search size={16} className="text-gray-400" />} 
             placeholder="Search users..." 
-            className="max-w-md rounded-lg"
+            className="max-w-md rounded-lg hover:border-brand-dark focus:border-brand-dark transition-colors"
           />
         </div>
 
@@ -162,6 +167,9 @@ const UserManagement = () => {
               setSize(s);
             },
             showSizeChanger: true
+          }}
+          locale={{
+            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No users found" />
           }}
         />
       </Card>

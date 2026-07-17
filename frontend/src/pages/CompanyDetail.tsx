@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Tabs, Descriptions, Tag, Button, Statistic, Row, Col, Table, Modal, Form, Input, InputNumber, Select, message } from 'antd';
+import { Card, Tabs, Descriptions, Tag, Button, Statistic, Row, Col, Table, Modal, Form, Input, InputNumber, Select, message, Empty } from 'antd';
 import { Building2, Plus, Mail, MapPin, Receipt, Ticket, Activity } from 'lucide-react';
 import api from '../api/axiosInstance';
+import { getStatusTag, formatCurrency } from '../lib/statusUtils';
 
 const CompanyDetail = () => {
   const { id } = useParams();
@@ -111,7 +112,7 @@ const CompanyDetail = () => {
         </Col>
         <Col span={8}>
           <Card bordered={false} className="bg-brand-paper">
-            <Statistic title="Outstanding Balance" value={stats?.outstandingBalance || 0} precision={2} prefix="₹" valueStyle={{ color: '#cf1322' }} />
+            <Statistic title="Outstanding Balance" value={stats?.outstandingBalance || 0} precision={2} prefix="₹" valueStyle={{ color: '#ef4444' }} />
           </Card>
         </Col>
       </Row>
@@ -121,7 +122,7 @@ const CompanyDetail = () => {
           <Descriptions.Item label="Company Name">{company.name}</Descriptions.Item>
           <Descriptions.Item label="GST Number"><span className="font-mono">{company.gstNumber}</span></Descriptions.Item>
           <Descriptions.Item label="Status">
-            {company.active ? <Tag color="success">Active</Tag> : <Tag color="error">Inactive</Tag>}
+            {company.active ? <Tag color={getStatusTag('ACTIVE').color}>Active</Tag> : <Tag color={getStatusTag('INACTIVE').color}>Inactive</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="Contact Name">{company.contactName || '—'}</Descriptions.Item>
           <Descriptions.Item label="Billing Email">{company.billingEmail || '—'}</Descriptions.Item>
@@ -142,30 +143,50 @@ const CompanyDetail = () => {
   const TicketsTab = () => {
     const columns = [
       { title: 'Date', dataIndex: 'travelDate', key: 'travelDate' },
-      { title: 'PNR', dataIndex: 'pnrNumber', key: 'pnr', render: (t: string) => <span className="font-mono">{t}</span> },
-      { title: 'Passenger', dataIndex: 'passengerName', key: 'passenger' },
-      { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <Tag>{s}</Tag> },
-      { title: 'Amount', dataIndex: 'totalAmount', key: 'amt', render: (a: number) => `₹${a?.toFixed(2) || '0.00'}` }
+      { title: 'PNR', dataIndex: 'pnrNumber', key: 'pnr', render: (t: string) => <span className="font-mono font-medium text-brand-dark">{t || 'PENDING'}</span> },
+      { title: 'Passenger', dataIndex: 'passengerName', key: 'passenger', render: (t: string) => t || '—' },
+      { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => {
+        const tag = getStatusTag(s);
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      }},
+      { title: 'Amount', dataIndex: 'totalAmount', key: 'amt', render: (a: number) => formatCurrency(a) }
     ];
 
     return (
-      <Card className="shadow-none border border-gray-100">
-        <Table dataSource={ticketsData?.content} columns={columns} rowKey="id" pagination={false} loading={ticketsLoading} />
+      <Card className="shadow-none border border-gray-100 animate-fade-in">
+        <Table 
+          dataSource={ticketsData?.content} 
+          columns={columns} 
+          rowKey="id" 
+          pagination={false} 
+          loading={ticketsLoading} 
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tickets found" /> }}
+        />
       </Card>
     );
   };
 
   const InvoicesTab = () => {
     const columns = [
-      { title: 'Invoice #', dataIndex: 'invoiceNumber', key: 'num', render: (t: string) => <span className="font-mono font-semibold">{t}</span> },
+      { title: 'Invoice #', dataIndex: 'invoiceNumber', key: 'num', render: (t: string) => <span className="font-mono font-semibold text-brand-dark">{t}</span> },
       { title: 'Date', dataIndex: 'invoiceDate', key: 'date' },
-      { title: 'Grand Total', dataIndex: 'grandTotal', key: 'total', render: (a: number) => `₹${a?.toFixed(2) || '0.00'}` },
-      { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <Tag>{s}</Tag> },
+      { title: 'Grand Total', dataIndex: 'grandTotal', key: 'total', render: (a: number) => formatCurrency(a) },
+      { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => {
+        const tag = getStatusTag(s);
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      }},
     ];
 
     return (
-      <Card className="shadow-none border border-gray-100">
-        <Table dataSource={invoicesData?.content} columns={columns} rowKey="id" pagination={false} loading={invoicesLoading} />
+      <Card className="shadow-none border border-gray-100 animate-fade-in">
+        <Table 
+          dataSource={invoicesData?.content} 
+          columns={columns} 
+          rowKey="id" 
+          pagination={false} 
+          loading={invoicesLoading} 
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No invoices found" /> }}
+        />
       </Card>
     );
   };
@@ -177,11 +198,11 @@ const CompanyDetail = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-           <div className="w-16 h-16 bg-brand-dark rounded-xl flex items-center justify-center text-white text-2xl font-serif">
-             {company.name.charAt(0)}
+           <div className="w-16 h-16 bg-gradient-to-br from-brand-dark to-black rounded-xl flex items-center justify-center text-brand-gold text-2xl font-serif shadow-sm border border-gray-100">
+             {company.name.charAt(0).toUpperCase()}
            </div>
            <div>
              <h1 className="text-3xl font-serif text-brand-dark mb-1">{company.name}</h1>
@@ -192,13 +213,18 @@ const CompanyDetail = () => {
            </div>
         </div>
         <div className="flex gap-3">
-          <Button onClick={() => {
-            editForm.setFieldsValue(company);
-            setEditModalOpen(true);
-          }}>Edit Company</Button>
+          <Button 
+            onClick={() => {
+              editForm.setFieldsValue(company);
+              setEditModalOpen(true);
+            }}
+            className="font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+          >
+            Edit Company
+          </Button>
           <Button 
             type="primary" 
-            className="bg-brand-dark" 
+            className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5" 
             onClick={() => generateInvoiceMutation.mutate()}
             loading={generateInvoiceMutation.isPending}
           >
@@ -207,7 +233,9 @@ const CompanyDetail = () => {
         </div>
       </div>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabs} className="bg-white p-2 rounded-xl" />
+      <div className="animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabs} className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 [&_.ant-tabs-nav]:mb-6 [&_.ant-tabs-tab]:text-gray-500 [&_.ant-tabs-tab-active]:text-brand-dark [&_.ant-tabs-ink-bar]:bg-brand-dark" />
+      </div>
 
       <Modal
         title="Edit Company"

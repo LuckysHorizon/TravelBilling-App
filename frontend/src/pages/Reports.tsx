@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Card, Select, DatePicker, Button, Table } from 'antd';
+import { useState } from 'react';
+import { Card, Select, DatePicker, Button, Table, Empty } from 'antd';
 import { Download, Filter } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -51,21 +51,21 @@ const Reports = () => {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-serif text-brand-dark mb-1">Reports & Analytics</h1>
           <p className="text-gray-500">Analyze your billing and agency performance.</p>
         </div>
         <div className="flex gap-3 items-center">
-          <RangePicker value={dateRange} onChange={setDateRange} className="rounded-lg" />
-          <Button icon={<Download size={16} />} className="rounded-lg">Export CSV</Button>
+          <RangePicker value={dateRange} onChange={setDateRange} className="rounded-lg hover:border-brand-dark focus:border-brand-dark transition-colors" />
+          <Button icon={<Download size={16} />} className="rounded-lg font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Export CSV</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
-        <Card title={<span className="font-serif">Revenue Over Time</span>} className="shadow-sm" loading={revLoading}>
+        <Card title={<span className="font-serif">Revenue Over Time</span>} className="shadow-sm border border-gray-100 animate-slide-up" loading={revLoading} style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
           <div className="h-[300px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueTrend || []}>
@@ -86,7 +86,7 @@ const Reports = () => {
         </Card>
 
         {/* Top Clients Chart */}
-        <Card title={<span className="font-serif">Top Clients by Billing</span>} className="shadow-sm" loading={clientLoading}>
+        <Card title={<span className="font-serif">Top Clients by Billing</span>} className="shadow-sm border border-gray-100 animate-slide-up" loading={clientLoading} style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
           <div className="h-[300px] w-full mt-4 flex justify-center items-center">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -117,7 +117,7 @@ const Reports = () => {
       </div>
 
       {/* Client Breakdown Table */}
-      <Card title={<span className="font-serif">Client Breakdown</span>} className="shadow-sm">
+      <Card title={<span className="font-serif">Client Breakdown</span>} className="shadow-sm border border-gray-100 animate-slide-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
         <Table 
           columns={columns} 
           dataSource={clientBreakdown || []} 
@@ -125,6 +125,7 @@ const Reports = () => {
           size="middle" 
           loading={clientLoading}
           rowKey="key"
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No client data found" /> }}
         />
       </Card>
     </div>

@@ -150,9 +150,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         collapsible 
         collapsed={collapsed}
         width={240}
-        className="shadow-xl z-20"
+        className="shadow-xl z-20 relative bg-gradient-to-b from-brand-dark to-black border-r border-white/5"
       >
-        <div className="h-16 flex items-center justify-center p-4">
+        {/* Thin gold accent line at the top of the sidebar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-gold/80 to-brand-gold z-10" />
+        
+        <div className="h-16 flex items-center justify-center p-4 relative z-10">
           {!collapsed ? (
             <h1 className="text-white text-xl font-bold font-serif whitespace-nowrap">TravelBill Pro</h1>
           ) : (
@@ -167,12 +170,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           defaultOpenKeys={['ticketsGroup', 'settingsGroup']}
           items={getMenuItems()}
           onClick={({ key }) => navigate(key)}
-          className="border-none py-4"
+          className="border-none py-4 bg-transparent [&_.ant-menu-item]:transition-all [&_.ant-menu-item:hover]:translate-x-1"
         />
       </Sider>
 
       <Layout className="bg-brand-paper">
-        <Header className="h-16 px-6 bg-white flex items-center justify-between shadow-sm sticky top-0 z-10 border-b border-gray-100">
+        <Header className="h-16 px-6 bg-white/80 backdrop-blur-md flex items-center justify-between shadow-sm sticky top-0 z-10 border-b border-gray-200/50 transition-all duration-300">
           <button 
             onClick={() => setCollapsed(!collapsed)}
             className="text-gray-500 hover:text-brand-dark transition-colors"
@@ -186,8 +189,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             </span>
             <div className="w-px h-6 bg-gray-200 hidden sm:block"></div>
             
-            <Dropdown menu={userMenu} placement="bottomRight">
-              <div className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1.5 pr-3 rounded-full transition-colors border border-transparent hover:border-gray-200">
+            <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
+              <div className="flex items-center gap-3 cursor-pointer hover:bg-brand-paper p-1.5 pr-4 rounded-full transition-all duration-300 border border-transparent hover:border-gray-200 hover:shadow-sm">
                 <Avatar className="bg-brand-dark" icon={<UserIcon size={16} />} />
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold leading-none">{user?.username}</span>
@@ -198,7 +201,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           </div>
         </Header>
 
-        <Content className="p-6 md:p-8 lg:p-10 max-w-[1600px] w-full mx-auto">
+        <Content className="p-6 md:p-8 lg:p-10 max-w-[1600px] w-full mx-auto animate-fade-in">
           {children}
         </Content>
       </Layout>

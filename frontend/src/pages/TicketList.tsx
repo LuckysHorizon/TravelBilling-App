@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Card, Table, Button, Input, Tag, Select, Popconfirm, message } from 'antd';
+import { Card, Table, Button, Input, Tag, Select, Popconfirm, message, Empty } from 'antd';
 import { Search, Plus, Filter, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTickets } from '../api/queries';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
+import { getStatusTag, formatCurrency } from '../lib/statusUtils';
 
 const TicketList = () => {
   const [page, setPage] = useState(0);
@@ -55,18 +56,7 @@ const TicketList = () => {
     },
   });
 
-  const getStatusTag = (status: string) => {
-    switch(status) {
-      case 'QUEUED': return <Tag color="default">Queued</Tag>;
-      case 'EXTRACTING': return <Tag color="processing">Extracting</Tag>;
-      case 'EXTRACTION_FAILED': return <Tag color="error">Failed</Tag>;
-      case 'PENDING_REVIEW': return <Tag color="warning">Pending Review</Tag>;
-      case 'APPROVED': return <Tag color="blue">Approved</Tag>;
-      case 'BILLED': return <Tag color="purple">Billed</Tag>;
-      case 'PAID': return <Tag color="success">Paid</Tag>;
-      default: return <Tag color="default">{status}</Tag>;
-    }
-  };
+
 
   const columns = [
     {
@@ -97,19 +87,22 @@ const TicketList = () => {
       title: 'Base Fare',
       dataIndex: 'baseFare',
       key: 'baseFare',
-      render: (amount: number) => amount ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount) : '—'
+      render: (amount: number) => formatCurrency(amount)
     },
     {
       title: 'Grand Total',
       dataIndex: 'totalAmount',
       key: 'amount',
-      render: (amount: number) => amount ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount) : '—'
+      render: (amount: number) => formatCurrency(amount)
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => getStatusTag(status)
+      render: (status: string) => {
+        const tag = getStatusTag(status);
+        return <Tag color={tag.color}>{tag.label}</Tag>;
+      }
     },
     {
       title: 'Actions',
@@ -155,7 +148,7 @@ const TicketList = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-serif text-brand-dark mb-1">Tickets</h1>
@@ -183,7 +176,7 @@ const TicketList = () => {
           <Button 
             type="primary" 
             icon={<Plus size={16} />} 
-            className="bg-brand-dark hover:bg-black font-medium"
+            className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
             onClick={() => navigate('/tickets/upload')}
           >
             Upload Tickets
@@ -191,12 +184,12 @@ const TicketList = () => {
         </div>
       </div>
 
-      <Card className="min-h-[500px]">
+      <Card className="min-h-[500px] animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <Input 
             prefix={<Search className="text-gray-400" size={16} />} 
             placeholder="Search tickets by PNR or Passenger..." 
-            className="max-w-sm rounded-lg"
+            className="max-w-sm rounded-lg hover:border-brand-dark focus:border-brand-dark transition-colors"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             allowClear
@@ -238,6 +231,9 @@ const TicketList = () => {
               setSize(s);
             },
             showSizeChanger: true
+          }}
+          locale={{
+            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tickets found" />
           }}
         />
       </Card>

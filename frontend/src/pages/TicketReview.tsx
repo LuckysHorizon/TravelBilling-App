@@ -73,7 +73,7 @@ const TicketReview = () => {
     return (
       <div className="flex items-center gap-2 mt-1">
         <Progress percent={percent} size="small" strokeColor={color} showInfo={false} className="flex-1" />
-        <span className="text-xs text-gray-500 font-mono">{percent}%</span>
+        <span className="text-xs text-gray-500 font-mono font-medium">{percent}%</span>
       </div>
     );
   };
@@ -84,23 +84,23 @@ const TicketReview = () => {
   const confidence = ticket.aiConfidence ? Number(ticket.aiConfidence) : 0;
 
   return (
-    <div className="space-y-6 max-h-screen flex flex-col">
+    <div className="space-y-6 max-h-[calc(100vh-80px)] flex flex-col animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-serif text-brand-dark mb-1">Review Ticket #{ticket.id}</h1>
           <p className="text-gray-500 text-sm">Please verify the fields extracted by the AI pipeline. Red fields require attention.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={() => navigate('/tickets')}>Back to List</Button>
-          <Button type="primary" className="bg-brand-dark" onClick={() => form.submit()} loading={approveMutation.isPending}>
+          <Button onClick={() => navigate('/tickets')} className="font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">Back to List</Button>
+          <Button type="primary" className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5" onClick={() => form.submit()} loading={approveMutation.isPending}>
             Approve & Save
           </Button>
         </div>
       </div>
 
-      <div className="flex gap-6 h-[calc(100vh-180px)]">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[500px]">
         {/* Left pane: Document Viewer */}
-        <Card className="flex-1 overflow-hidden flex flex-col" styles={{ body: { height: '100%', padding: 0 } }}>
+        <Card className="flex-1 overflow-hidden flex flex-col shadow-sm border border-gray-100 animate-slide-up" styles={{ body: { height: '100%', padding: 0 } }} style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
           {ticket.filePath ? (
             <iframe
               src={`${config.apiBaseUrl}/api/tickets/${ticket.id}/file`}
@@ -116,7 +116,7 @@ const TicketReview = () => {
         </Card>
 
         {/* Right pane: Extracted Fields Form */}
-        <Card className="flex-1 overflow-y-auto" title={<span className="font-serif">Extracted Data</span>}>
+        <Card className="flex-1 lg:max-w-md overflow-y-auto shadow-sm border border-gray-100 animate-slide-up" title={<span className="font-serif text-brand-dark">Extracted Data</span>} style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
           <Form
             form={form}
             layout="vertical"
@@ -126,46 +126,46 @@ const TicketReview = () => {
             <div className="grid grid-cols-2 gap-x-4">
               <Form.Item label="PNR / Booking Ref">
                 <Form.Item name="pnrNumber" noStyle rules={[{ required: true }]}>
-                  <Input className="font-mono" />
+                  <Input className="font-mono hover:border-brand-dark focus:border-brand-dark transition-colors" />
                 </Form.Item>
                 <ConfidenceIndicator score={confidence} />
               </Form.Item>
 
               <Form.Item label="Passenger Name">
                 <Form.Item name="passengerName" noStyle>
-                  <Input />
+                  <Input className="hover:border-brand-dark focus:border-brand-dark transition-colors" />
                 </Form.Item>
                 <ConfidenceIndicator score={confidence} />
               </Form.Item>
 
               <Form.Item label="Travel Date">
                 <Form.Item name="travelDate" noStyle rules={[{ required: true }]}>
-                  <DatePicker className="w-full" />
+                  <DatePicker className="w-full hover:border-brand-dark focus:border-brand-dark transition-colors" />
                 </Form.Item>
                 <ConfidenceIndicator score={confidence} />
               </Form.Item>
               
               <Form.Item label="Operator">
                 <Form.Item name="operatorName" noStyle>
-                  <Input />
+                  <Input className="hover:border-brand-dark focus:border-brand-dark transition-colors" />
                 </Form.Item>
               </Form.Item>
 
               <Form.Item label="Origin">
                 <Form.Item name="origin" noStyle>
-                  <Input />
+                  <Input className="hover:border-brand-dark focus:border-brand-dark transition-colors" />
                 </Form.Item>
               </Form.Item>
 
               <Form.Item label="Destination">
                 <Form.Item name="destination" noStyle>
-                  <Input />
+                  <Input className="hover:border-brand-dark focus:border-brand-dark transition-colors" />
                 </Form.Item>
               </Form.Item>
 
               <Form.Item label="Base Fare (₹)">
                 <Form.Item name="baseFare" noStyle rules={[{ required: true }]}>
-                  <Input type="number" step="0.01" className="font-mono" />
+                  <Input type="number" step="0.01" className="font-mono hover:border-brand-dark focus:border-brand-dark transition-colors" />
                 </Form.Item>
                 <ConfidenceIndicator score={confidence} />
                 {confidence < 0.6 && (

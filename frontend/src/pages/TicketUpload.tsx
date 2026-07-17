@@ -76,13 +76,13 @@ const TicketUpload = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto px-2 sm:px-0">
+    <div className="space-y-6 max-w-4xl mx-auto px-2 sm:px-0 animate-fade-in">
       <div>
         <h1 className="text-2xl sm:text-3xl font-serif text-brand-dark mb-1">Upload Tickets</h1>
         <p className="text-gray-500 text-sm sm:text-base">Drop PDF or Image tickets to begin the OCR and AI extraction pipeline.</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8 animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'both' }}>
         {/* Company Select */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-brand-dark mb-2">Select Company</label>
@@ -142,7 +142,7 @@ const TicketUpload = () => {
               onClick={handleUpload}
               disabled={fileList.length === 0 || !selectedCompanyId}
               loading={uploading}
-              className="bg-brand-dark hover:bg-black border-none"
+              className="bg-brand-dark hover:bg-black font-medium shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 border-none"
               icon={<PlayCircle size={16} />}
               size="large"
             >
@@ -153,7 +153,7 @@ const TicketUpload = () => {
       </div>
 
       {/* Pipeline Steps */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-slide-up" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
         <h3 className="font-serif text-brand-dark text-lg mb-4">How the Pipeline Works</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
