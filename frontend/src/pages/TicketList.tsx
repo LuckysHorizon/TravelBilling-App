@@ -102,7 +102,7 @@ const TicketList = () => {
       key: 'status',
       render: (status: string) => {
         const tag = getStatusTag(status);
-        return <Tag color={tag.color}>{tag.label}</Tag>;
+        return <Tag className={tag.className}>{tag.label}</Tag>;
       }
     },
     {

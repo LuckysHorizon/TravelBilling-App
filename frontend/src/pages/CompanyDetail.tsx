@@ -123,7 +123,7 @@ const CompanyDetail = () => {
           <Descriptions.Item label="Company Name">{company.name}</Descriptions.Item>
           <Descriptions.Item label="GST Number"><span className="font-mono">{company.gstNumber}</span></Descriptions.Item>
           <Descriptions.Item label="Status">
-            {company.active ? <Tag color={getStatusTag('ACTIVE').color}>Active</Tag> : <Tag color={getStatusTag('INACTIVE').color}>Inactive</Tag>}
+            {company.active ? <Tag className={getStatusTag('ACTIVE').className}>Active</Tag> : <Tag className={getStatusTag('INACTIVE').className}>Inactive</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="Contact Name">{company.contactName || '—'}</Descriptions.Item>
           <Descriptions.Item label="Billing Email">{company.billingEmail || '—'}</Descriptions.Item>
@@ -148,7 +148,7 @@ const CompanyDetail = () => {
       { title: 'Passenger', dataIndex: 'passengerName', key: 'passenger', render: (t: string) => t || '—' },
       { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => {
         const tag = getStatusTag(s);
-        return <Tag color={tag.color}>{tag.label}</Tag>;
+        return <Tag className={tag.className}>{tag.label}</Tag>;
       }},
       { title: 'Amount', dataIndex: 'totalAmount', key: 'amt', render: (a: number) => formatCurrency(a) }
     ];
@@ -174,7 +174,7 @@ const CompanyDetail = () => {
       { title: 'Grand Total', dataIndex: 'grandTotal', key: 'total', render: (a: number) => formatCurrency(a) },
       { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => {
         const tag = getStatusTag(s);
-        return <Tag color={tag.color}>{tag.label}</Tag>;
+        return <Tag className={tag.className}>{tag.label}</Tag>;
       }},
     ];
 

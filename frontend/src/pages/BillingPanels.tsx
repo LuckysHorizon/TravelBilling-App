@@ -162,7 +162,7 @@ const BillingPanels = () => {
                 <div className="flex items-center gap-3">
                   <Receipt size={18} className="text-brand-dark" />
                   <span className="text-lg font-serif">{panel.label}</span>
-                  <Tag color={statusTag.color}>{statusTag.label}</Tag>
+                  <Tag className={statusTag.className}>{statusTag.label}</Tag>
                 </div>
               }
               extra={

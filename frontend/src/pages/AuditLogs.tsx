@@ -27,7 +27,7 @@ const AuditLogs = () => {
     else status = action;
     
     const tag = getStatusTag(status);
-    return <Tag color={tag.color}>{action}</Tag>;
+    return <Tag className={tag.className}>{action}</Tag>;
   };
 
   const columns = [

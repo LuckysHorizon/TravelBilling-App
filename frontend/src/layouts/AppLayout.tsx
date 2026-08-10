@@ -18,6 +18,7 @@ interface AppLayoutProps {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<string[]>(['settingsGroup']);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const { user } = useSelector((state: RootState) => state.auth);
@@ -50,6 +51,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [profileMenuOpen]);
+
+  useEffect(() => {
+    setPendingNavigation(null);
+  }, [location.pathname]);
 
   const getMenuGroups = () => {
     const groups: any[] = [
@@ -127,6 +132,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     return false;
   };
 
+  const navigateTo = (key: string) => {
+    setPendingNavigation(key);
+    navigate(key);
+  };
+
   const renderMenuItem = (item: any, depth = 0) => {
     if (item.children) {
       const isOpen = openGroups.includes(item.key) && !collapsed;
@@ -135,7 +145,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           <button
             onClick={() => !collapsed && toggleGroup(item.key)}
             className={cn(
-              "flex items-center w-full px-4 py-2.5 my-1 rounded-[999px] transition-colors text-[#5C6B79] hover:bg-white/40",
+              "nav-item flex items-center w-full px-4 py-2.5 my-1 rounded-[999px] text-[#5C6B79] hover:bg-white/40",
               collapsed ? "justify-center" : "justify-between"
             )}
           >
@@ -158,22 +168,22 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       );
     }
 
-    const active = isActive(item.key);
+    const active = pendingNavigation === item.key || isActive(item.key);
     return (
       <button
         key={item.key}
-        onClick={() => navigate(item.key)}
+        onClick={() => navigateTo(item.key)}
         className={cn(
-          "flex items-center w-full px-4 py-2.5 my-1 rounded-[999px] transition-colors duration-200",
+          "nav-item flex items-center w-full px-4 py-2.5 my-1 rounded-[999px]",
           active 
-            ? "bg-white/75 border border-white/95 text-[#12202D] font-medium shadow-sm backdrop-blur-md" 
-            : "text-[#5C6B79] hover:text-[#2B3A48] hover:bg-white/40 hover:translate-x-1",
+            ? "nav-item--active text-[#12202D] font-medium" 
+            : "text-[#5C6B79] hover:text-[#2B3A48] hover:bg-white/40",
           collapsed ? "justify-center" : "justify-between"
         )}
       >
         <div className="flex items-center gap-3">
-          <span className={cn(active ? "text-[#0284C7]" : "text-[#5C6B79]")}>{item.icon}</span>
-          {!collapsed && <span className={cn("text-[14px]", active ? "font-semibold" : "font-medium")}>{item.label}</span>}
+          <span className={cn("nav-item-icon", active ? "text-[#0284C7]" : "text-[#5C6B79]")}>{item.icon}</span>
+          {!collapsed && <span className={cn("nav-item-label text-[14px]", active ? "font-semibold" : "font-medium")}>{item.label}</span>}
         </div>
         {!collapsed && item.badge && (
           <span className="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(217,119,6,0.15)', color: '#92400E' }}>

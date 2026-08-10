@@ -123,6 +123,41 @@
   }
 }
 
+@layer components {
+  .nav-item {
+    border: 1px solid transparent;
+    outline: none;
+    transition:
+      background-color 180ms cubic-bezier(0.25, 1, 0.5, 1),
+      border-color 180ms cubic-bezier(0.25, 1, 0.5, 1),
+      color 120ms cubic-bezier(0.25, 1, 0.5, 1),
+      transform 120ms ease;
+  }
+
+  .nav-item:focus {
+    outline: none;
+  }
+
+  .nav-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #bae6fd;
+  }
+
+  .nav-item:active {
+    transform: scale(0.97);
+  }
+
+  .nav-item--active {
+    background-color: rgb(224 242 254 / 0.85);
+    border-color: rgb(186 230 253);
+  }
+
+  .nav-item-icon,
+  .nav-item-label {
+    transition: color 120ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+}
+
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

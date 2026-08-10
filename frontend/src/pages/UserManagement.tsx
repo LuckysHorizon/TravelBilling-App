@@ -86,7 +86,7 @@ const UserManagement = () => {
       key: 'role',
       render: (role: string) => {
         const tag = getStatusTag(role);
-        return <Tag color={tag.color}>{tag.label}</Tag>;
+        return <Tag className={tag.className}>{tag.label}</Tag>;
       }
     },
     {
@@ -95,7 +95,7 @@ const UserManagement = () => {
       key: 'status',
       render: (active: boolean) => {
         const tag = getStatusTag(active ? 'ACTIVE' : 'INACTIVE');
-        return <Tag color={tag.color}>{tag.label}</Tag>;
+        return <Tag className={tag.className}>{tag.label}</Tag>;
       }
     },
     {

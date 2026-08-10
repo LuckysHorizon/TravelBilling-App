@@ -71,7 +71,7 @@ const CompanyList = () => {
       key: 'status',
       render: (active: boolean) => {
         const tag = getStatusTag(active ? 'ACTIVE' : 'INACTIVE');
-        return <Tag color={tag.color}>{tag.label}</Tag>;
+        return <Tag className={tag.className}>{tag.label}</Tag>;
       }
     },
     {
@@ -94,6 +94,15 @@ const CompanyList = () => {
       )
     }
   ];
+
+  const billingCycleColumn = columns.find((column) => column.key === 'cycle') as {
+    render?: (value: string) => React.ReactNode;
+  };
+  billingCycleColumn.render = (billingCycle) => {
+    if (!billingCycle) return '—';
+    const tag = getStatusTag(billingCycle);
+    return <Tag className={tag.className}>{tag.label}</Tag>;
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
