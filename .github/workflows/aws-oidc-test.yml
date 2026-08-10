@@ -22,5 +22,5 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
-      - name: Verify ECR access
-        run: aws ecr describe-repositories
+      - name: Verify ECR authorization
+        run: aws ecr get-login-password --region ap-south-1 > /dev/null 
