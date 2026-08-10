@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { X, History, Bot, Sparkles, Navigation } from 'lucide-react';
+import { X, History, Sparkles, Navigation } from 'lucide-react';
 import { RootState } from '../../store';
 import { closePanel, togglePanel, setSession } from '../../store/slices/agentSlice';
 import { useAgentChat } from '../../hooks/useAgentChat';
@@ -13,22 +13,12 @@ import { RateLimitNotice } from './RateLimitNotice';
 function AgentEmptyState() {
   return (
     <div className="agent-empty">
-      <div className="agent-empty__icon">
-        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-          <circle cx="28" cy="28" r="27" stroke="url(#grad)" strokeWidth="1.5" />
-          <defs>
-            <linearGradient id="grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#6C63FF" />
-              <stop offset="50%" stopColor="#A78BFA" />
-              <stop offset="100%" stopColor="#38BDF8" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <Bot
-          size={24}
-          style={{ position: 'absolute', color: '#A78BFA' }}
-          strokeWidth={1.5}
-        />
+      <div className="agent-empty__icon" aria-hidden="true">
+        <span className="agent-empty__orb-glow" />
+        <span className="agent-empty__orb-core" />
+        <span className="agent-empty__orb-mark">
+          <Sparkles size={22} strokeWidth={1.6} />
+        </span>
       </div>
       <h3 className="agent-empty__title">TravelBill AI</h3>
       <p className="agent-empty__subtitle">

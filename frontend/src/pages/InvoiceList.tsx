@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Tooltip, Modal, Form, InputNumber, message, Empty } from 'antd';
+import { Card, Table, Button, Input, Tag, Tooltip, Modal, Form, InputNumber, Empty } from 'antd';
 import { Search, Download, Mail, FileSpreadsheet, FileText, Edit3 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -29,11 +30,11 @@ const InvoiceList = () => {
       return data;
     },
     onSuccess: (data) => {
-      message.success(data.message || 'Invoice emailed successfully');
+      toast.success(data.message || 'Invoice emailed successfully');
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to send email');
+      toast.error(err.response?.data?.message || 'Failed to send email');
     },
   });
 
@@ -42,11 +43,11 @@ const InvoiceList = () => {
       await api.post(`/invoices/${id}/mark-paid`);
     },
     onSuccess: () => {
-      message.success('Invoice marked as paid');
+      toast.success('Invoice marked as paid');
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to mark as paid');
+      toast.error(err.response?.data?.message || 'Failed to mark as paid');
     },
   });
 
@@ -56,13 +57,13 @@ const InvoiceList = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Invoice updated and PDF regenerated');
+      toast.success('Invoice updated and PDF regenerated');
       setEditModalOpen(false);
       setEditingInvoice(null);
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to update invoice');
+      toast.error(err.response?.data?.message || 'Failed to update invoice');
     },
   });
 
@@ -79,7 +80,7 @@ const InvoiceList = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err: any) {
-      message.error('Failed to download PDF');
+      toast.error('Failed to download PDF');
     }
   };
 
@@ -95,7 +96,7 @@ const InvoiceList = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err: any) {
-      message.error('Failed to download Excel');
+      toast.error('Failed to download Excel');
     }
   };
 

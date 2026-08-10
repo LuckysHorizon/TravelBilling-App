@@ -23,6 +23,8 @@ import EmployeeBilling from './pages/EmployeeBilling';
 import SuperAdmin from './pages/SuperAdmin';
 import { AgentFAB } from './components/agent/AgentFAB';
 
+import { Toaster } from './components/ui/sonner';
+
 function App() {
   const dispatch = useDispatch<AppDispatch>();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -75,6 +77,7 @@ function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       {isAuthenticated && <AgentFAB />}
+      <Toaster />
     </BrowserRouter>
   );
 }

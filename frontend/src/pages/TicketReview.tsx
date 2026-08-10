@@ -1,6 +1,7 @@
+import { toast } from "sonner";
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Form, Input, Button, Progress, message, DatePicker, Spin, Alert } from 'antd';
+import { Card, Form, Input, Button, Progress, DatePicker, Spin, Alert } from 'antd';
 import { CheckCircle, AlertTriangle, FileImage } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
@@ -40,12 +41,12 @@ const TicketReview = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Ticket approved and saved.');
+      toast.success('Ticket approved and saved.');
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
       navigate('/tickets');
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to approve ticket');
+      toast.error(err.response?.data?.message || 'Failed to approve ticket');
     },
   });
 

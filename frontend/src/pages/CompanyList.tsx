@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Modal, Form, Select, InputNumber, message, Empty } from 'antd';
+import { Card, Table, Button, Input, Tag, Modal, Form, Select, InputNumber, Empty } from 'antd';
 import { Search, Plus, Building2, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanies } from '../api/queries';
@@ -22,13 +23,13 @@ const CompanyList = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Company created successfully');
+      toast.success('Company created successfully');
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       setModalOpen(false);
       form.resetFields();
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to create company');
+      toast.error(err.response?.data?.message || 'Failed to create company');
     },
   });
 

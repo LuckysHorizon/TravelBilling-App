@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Select, Tag, Statistic, Empty, Popconfirm, message } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Select, Tag, Statistic, Empty, Popconfirm } from 'antd';
 import { Plus, FileText, Trash2, Receipt } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
@@ -54,12 +55,12 @@ const BillingPanels = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Billing panel created');
+      toast.success('Billing panel created');
       queryClient.invalidateQueries({ queryKey: ['billing-panels'] });
       setCreateModalOpen(false);
       form.resetFields();
     },
-    onError: (err: any) => message.error(err.response?.data?.message || 'Failed to create panel'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create panel'),
   });
 
   const addTicketsMutation = useMutation({
@@ -68,12 +69,12 @@ const BillingPanels = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Tickets added to panel');
+      toast.success('Tickets added to panel');
       queryClient.invalidateQueries({ queryKey: ['billing-panels'] });
       setAddTicketsModalOpen(false);
       setSelectedTicketIds([]);
     },
-    onError: (err: any) => message.error(err.response?.data?.message || 'Failed to add tickets'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to add tickets'),
   });
 
   const removeTicketMutation = useMutation({
@@ -82,10 +83,10 @@ const BillingPanels = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Ticket removed from panel');
+      toast.success('Ticket removed from panel');
       queryClient.invalidateQueries({ queryKey: ['billing-panels'] });
     },
-    onError: (err: any) => message.error(err.response?.data?.message || 'Failed to remove ticket'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to remove ticket'),
   });
 
   const generateInvoiceMutation = useMutation({
@@ -94,11 +95,11 @@ const BillingPanels = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Invoice generated from panel!');
+      toast.success('Invoice generated from panel!');
       queryClient.invalidateQueries({ queryKey: ['billing-panels'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
-    onError: (err: any) => message.error(err.response?.data?.message || 'Failed to generate invoice'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to generate invoice'),
   });
 
   const deletePanelMutation = useMutation({
@@ -106,10 +107,10 @@ const BillingPanels = () => {
       await api.delete(`/billing-panels/${panelId}`);
     },
     onSuccess: () => {
-      message.success('Panel deleted');
+      toast.success('Panel deleted');
       queryClient.invalidateQueries({ queryKey: ['billing-panels'] });
     },
-    onError: (err: any) => message.error(err.response?.data?.message || 'Failed to delete panel'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete panel'),
   });
 
   const ticketColumns = [

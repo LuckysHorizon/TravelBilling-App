@@ -1,7 +1,8 @@
+import { toast } from "sonner";
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Tabs, Descriptions, Tag, Button, Statistic, Row, Col, Table, Modal, Form, Input, InputNumber, Select, message, Empty } from 'antd';
+import { Card, Tabs, Descriptions, Tag, Button, Statistic, Row, Col, Table, Modal, Form, Input, InputNumber, Select, Empty } from 'antd';
 import { Building2, Plus, Mail, MapPin, Receipt, Ticket, Activity } from 'lucide-react';
 import api from '../api/axiosInstance';
 import { getStatusTag, formatCurrency } from '../lib/statusUtils';
@@ -59,13 +60,13 @@ const CompanyDetail = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Company updated successfully');
+      toast.success('Company updated successfully');
       queryClient.invalidateQueries({ queryKey: ['company', id] });
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       setEditModalOpen(false);
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to update company');
+      toast.error(err.response?.data?.message || 'Failed to update company');
     },
   });
 
@@ -86,11 +87,11 @@ const CompanyDetail = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('Invoice generated successfully');
+      toast.success('Invoice generated successfully');
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to generate invoice. Ensure there are approved tickets.');
+      toast.error(err.response?.data?.message || 'Failed to generate invoice. Ensure there are approved tickets.');
     },
   });
 

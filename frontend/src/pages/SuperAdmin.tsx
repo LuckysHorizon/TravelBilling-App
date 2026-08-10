@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Tag, Space, Typography, Tooltip, message, Popconfirm, Result, Empty } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Tag, Space, Typography, Tooltip, Popconfirm, Result, Empty } from 'antd';
 import { Plus, Building2, Globe, Database, Play, TestTube, RefreshCw, Trash2, PauseCircle } from 'lucide-react';
 import api from '../api/axiosInstance';
 
@@ -38,7 +39,7 @@ const SuperAdmin = () => {
     try {
       const { data } = await api.get('/super-admin/organizations');
       setOrgs(data);
-    } catch { message.error('Failed to load organizations'); }
+    } catch { toast.error('Failed to load organizations'); }
     setLoading(false);
   }, []);
 
@@ -48,19 +49,19 @@ const SuperAdmin = () => {
     setCreating(true);
     try {
       await api.post('/super-admin/organizations', values);
-      message.success(`Organization "${values.name}" created and provisioned!`);
+      toast.success(`Organization "${values.name}" created and provisioned!`);
       setCreateModalOpen(false);
       form.resetFields();
       fetchOrgs();
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Failed to create organization');
+      toast.error(err?.response?.data?.message || 'Failed to create organization');
     }
     setCreating(false);
   };
 
   const handleTestConnection = async () => {
     const dbUrl = form.getFieldValue('dbUrl');
-    if (!dbUrl) { message.warning('Enter a DB URL first'); return; }
+    if (!dbUrl) { toast.warning('Enter a DB URL first'); return; }
     setTestResult(null);
     try {
       const { data } = await api.post('/super-admin/test-connection', { dbUrl });
@@ -73,30 +74,30 @@ const SuperAdmin = () => {
   const handleSuspend = async (id: number) => {
     try {
       await api.put(`/super-admin/organizations/${id}/suspend`);
-      message.success('Organization suspended');
+      toast.success('Organization suspended');
       fetchOrgs();
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Failed to suspend');
+      toast.error(err?.response?.data?.message || 'Failed to suspend');
     }
   };
 
   const handleActivate = async (id: number) => {
     try {
       await api.put(`/super-admin/organizations/${id}/activate`);
-      message.success('Organization activated');
+      toast.success('Organization activated');
       fetchOrgs();
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Failed to activate');
+      toast.error(err?.response?.data?.message || 'Failed to activate');
     }
   };
 
   const handleDelete = async (id: number, name: string) => {
     try {
       await api.delete(`/super-admin/organizations/${id}`);
-      message.success(`Organization "${name}" deleted successfully`);
+      toast.success(`Organization "${name}" deleted successfully`);
       fetchOrgs();
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Failed to delete organization');
+      toast.error(err?.response?.data?.message || 'Failed to delete organization');
     }
   };
 

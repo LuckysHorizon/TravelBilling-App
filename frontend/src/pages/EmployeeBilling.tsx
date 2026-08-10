@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Card, Select, DatePicker, Button, Input, InputNumber, message, Tag, Space, Divider, Typography, Empty, Spin } from 'antd';
+import { Card, Select, DatePicker, Button, Input, InputNumber, Tag, Space, Divider, Typography, Empty, Spin } from 'antd';
 import { Calendar, Plus, Download, FileText, RotateCcw, UserRoundSearch, Building2 } from 'lucide-react';
 import api from '../api/axiosInstance';
 import dayjs from 'dayjs';
@@ -122,7 +123,7 @@ const EmployeeBilling = () => {
     api.get('/companies').then((res: any) => {
       const data = res.data?.content || res.data || [];
       setCompanies(Array.isArray(data) ? data : []);
-    }).catch(() => message.error('Failed to load companies')).finally(() => setCompaniesLoading(false));
+    }).catch(() => toast.error('Failed to load companies')).finally(() => setCompaniesLoading(false));
 
     // Fetch billing config from System Settings
     api.get('/admin/gst-config').then((res: any) => {
@@ -202,8 +203,8 @@ const EmployeeBilling = () => {
       setInv(invoiceData);
       setOriginalInv(JSON.parse(JSON.stringify(invoiceData)));
 
-      if (tickets.length === 0) message.info('No tickets found — you can add values manually');
-    } catch { message.error('Failed to fetch tickets'); }
+      if (tickets.length === 0) toast.info('No tickets found — you can add values manually');
+    } catch { toast.error('Failed to fetch tickets'); }
     setTicketsLoading(false);
   }, [selectedCompanyId, selectedPassenger, selectedCompany]);
 
@@ -227,7 +228,7 @@ const EmployeeBilling = () => {
     });
   };
 
-  const handleReset = () => { if (originalInv) { setInv(JSON.parse(JSON.stringify(originalInv))); message.info('Reset to original'); } };
+  const handleReset = () => { if (originalInv) { setInv(JSON.parse(JSON.stringify(originalInv))); toast.info('Reset to original'); } };
 
   const handleExport = async (type: 'xlsx' | 'pdf') => {
     if (!inv || !selectedCompanyId) return;
@@ -256,7 +257,7 @@ const EmployeeBilling = () => {
         const { data } = await api.post('/employee-billing/invoices', payload);
         invoiceId = data.id;
         setCreatedInvoiceId(data.id);
-        message.success(`Invoice #${data.invoiceNumber} created`);
+        toast.success(`Invoice #${data.invoiceNumber} created`);
       }
       const { data: fileData } = await api.get(`/employee-billing/invoices/${invoiceId}/export/${type}`, { responseType: 'blob' });
       const blob = new Blob([fileData], {
@@ -268,9 +269,9 @@ const EmployeeBilling = () => {
       a.download = `Invoice_${inv.invoiceNumber}_${inv.passengerName.replace(/\s+/g, '_')}.${type}`;
       a.click();
       window.URL.revokeObjectURL(url);
-      message.success(`${type.toUpperCase()} downloaded!`);
+      toast.success(`${type.toUpperCase()} downloaded!`);
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Export failed');
+      toast.error(err?.response?.data?.message || 'Export failed');
     }
     setLoading(false);
   };

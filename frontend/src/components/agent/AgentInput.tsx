@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Send, StopCircle, BarChart2, Ticket, FileText, Building2 } from 'lucide-react';
+import { Send, StopCircle, BarChart2, Ticket, FileText, Building2, Paperclip, Globe, Mic } from 'lucide-react';
 
 const SUGGESTIONS = [
   { icon: <BarChart2 size={13} />, label: 'Dashboard stats', prompt: "Show me today's dashboard stats" },
@@ -97,16 +97,30 @@ export const AgentInput: React.FC<AgentInputProps> = ({
       {!inputValue.trim() && <SuggestionChips onSelect={handleSelectSuggestion} />}
 
       <div className="agent-input-box">
-        <textarea
-          ref={textareaRef}
-          className="agent-input"
-          placeholder={isStreaming ? 'Thinking...' : 'Ask anything about your tickets, invoices, or companies...'}
-          value={inputValue}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          rows={1}
-          disabled={disabled}
-        />
+        <button className="agent-input-tool" type="button" aria-label="Attach file" disabled>
+          <Paperclip size={15} strokeWidth={1.5} />
+        </button>
+
+        <div className="agent-input-main">
+          <span className="agent-input-leading-icon" aria-hidden="true">
+            <Globe size={15} strokeWidth={1.5} />
+          </span>
+          <textarea
+            ref={textareaRef}
+            className="agent-input"
+            placeholder={isStreaming ? 'Thinking...' : 'Ask anything...'}
+            value={inputValue}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            disabled={disabled}
+          />
+        </div>
+
+        <button className="agent-input-mic" type="button" aria-label="Voice input" disabled>
+          <Mic size={15} strokeWidth={1.5} />
+        </button>
+
         <button
           className={`agent-send ${isStreaming ? 'agent-send--stop' : ''}`}
           onClick={isStreaming ? handleStop : handleSend}

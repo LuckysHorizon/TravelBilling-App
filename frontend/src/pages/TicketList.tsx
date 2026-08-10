@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState, useEffect } from 'react';
-import { Card, Table, Button, Input, Tag, Select, Popconfirm, message, Empty } from 'antd';
+import { Card, Table, Button, Input, Tag, Select, Popconfirm, Empty } from 'antd';
 import { Search, Plus, Filter, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTickets } from '../api/queries';
@@ -33,11 +34,11 @@ const TicketList = () => {
       await api.delete(`/tickets/${id}`);
     },
     onSuccess: () => {
-      message.success('Ticket deleted successfully');
+      toast.success('Ticket deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to delete ticket');
+      toast.error(err.response?.data?.message || 'Failed to delete ticket');
     },
   });
 
@@ -47,12 +48,12 @@ const TicketList = () => {
       return data;
     },
     onSuccess: (data) => {
-      message.success(`Deleted ${data.deleted} of ${data.total} tickets`);
+      toast.success(`Deleted ${data.deleted} of ${data.total} tickets`);
       setSelectedRowKeys([]);
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to delete tickets');
+      toast.error(err.response?.data?.message || 'Failed to delete tickets');
     },
   });
 

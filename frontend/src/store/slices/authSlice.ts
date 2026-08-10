@@ -111,6 +111,13 @@ const authSlice = createSlice({
             state.isAuthenticated = false;
             state.user = null;
             state.error = null;
+        })
+        .addCase(logout.rejected, (state) => {
+            // Leave the protected UI even if the server response is interrupted.
+            // This prevents a stale client session from keeping the app accessible.
+            state.isAuthenticated = false;
+            state.user = null;
+            state.error = null;
         });
   },
 });

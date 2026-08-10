@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import React, { useEffect } from 'react';
-import { Card, Form, Input, Button, InputNumber, Divider, message, Spin } from 'antd';
+import { Card, Form, Input, Button, InputNumber, Divider, Spin } from 'antd';
 import { Settings, IndianRupee, Building2, Server, Landmark } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
@@ -87,12 +88,12 @@ const SystemSettings = () => {
       });
     },
     onSuccess: () => {
-      message.success('System settings updated successfully.');
+      toast.success('System settings updated successfully.');
       queryClient.invalidateQueries({ queryKey: ['systemConfig'] });
       queryClient.invalidateQueries({ queryKey: ['gstConfig'] });
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to save settings');
+      toast.error(err.response?.data?.message || 'Failed to save settings');
     },
   });
 

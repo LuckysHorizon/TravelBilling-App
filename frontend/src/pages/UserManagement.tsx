@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Select, Modal, Form, message, Empty } from 'antd';
+import { Card, Table, Button, Input, Tag, Select, Modal, Form, Empty } from 'antd';
 import { Search, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
@@ -27,13 +28,13 @@ const UserManagement = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('User created successfully');
+      toast.success('User created successfully');
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setModalOpen(false);
       form.resetFields();
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to create user');
+      toast.error(err.response?.data?.message || 'Failed to create user');
     },
   });
 
@@ -43,14 +44,14 @@ const UserManagement = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('User updated successfully');
+      toast.success('User updated successfully');
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setModalOpen(false);
       setEditingUser(null);
       form.resetFields();
     },
     onError: (err: any) => {
-      message.error(err.response?.data?.message || 'Failed to update user');
+      toast.error(err.response?.data?.message || 'Failed to update user');
     },
   });
 
@@ -60,7 +61,7 @@ const UserManagement = () => {
       return data;
     },
     onSuccess: () => {
-      message.success('User deactivated');
+      toast.success('User deactivated');
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });

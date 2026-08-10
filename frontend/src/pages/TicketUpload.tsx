@@ -1,5 +1,6 @@
+import { toast } from "sonner";
 import { useState } from 'react';
-import { Card, Upload, message, Button, Alert, Select, Spin } from 'antd';
+import { Card, Upload, Button, Alert, Select, Spin } from 'antd';
 import { Upload as UploadIcon, PlayCircle, FileText, Zap, CheckCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/axiosInstance';
@@ -25,7 +26,7 @@ const TicketUpload = () => {
 
   const handleUpload = async () => {
     if (!selectedCompanyId) {
-      message.error("Please select a company first");
+      toast.error("Please select a company first");
       return;
     }
 
@@ -42,13 +43,13 @@ const TicketUpload = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       if (response.data && response.data.length > 0) {
-        message.success(`Tickets uploaded and extracted successfully (${response.data.length} record(s)).`);
+        toast.success(`Tickets uploaded and extracted successfully (${response.data.length} record(s)).`);
         navigate('/tickets'); 
       } else {
-        message.error('Upload completed, but OCR + AI extraction did not return any tickets.');
+        toast.error('Upload completed, but OCR + AI extraction did not return any tickets.');
       }
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Upload failed');
+      toast.error(err.response?.data?.message || 'Upload failed');
     } finally {
       setUploading(false);
       setFileList([]);
@@ -65,7 +66,7 @@ const TicketUpload = () => {
     beforeUpload: (file: any) => {
       const isAllowed = file.type === 'application/pdf' || file.type === 'image/jpeg' || file.type === 'image/png';
       if (!isAllowed) {
-        message.error(`${file.name} is not a valid format. Only PDF, JPG, PNG allowed.`);
+        toast.error(`${file.name} is not a valid format. Only PDF, JPG, PNG allowed.`);
         return Upload.LIST_IGNORE;
       }
       setFileList([...fileList, file]);
