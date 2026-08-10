@@ -15,8 +15,8 @@ export default function Footer() {
         <div className="py-12 grid grid-cols-2 md:grid-cols-5 gap-8">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-md bg-black flex items-center justify-center">
-                <span className="text-white text-[10px] font-bold">T</span>
+              <div className="w-6 h-6 shrink-0 overflow-hidden flex items-center justify-center">
+                <img src="/logos/icon-full.svg" alt="TravelBilling logo" className="w-full h-full object-contain" />
               </div>
               <span className="font-semibold text-sm text-text-primary">TravelBilling Pro</span>
             </div>

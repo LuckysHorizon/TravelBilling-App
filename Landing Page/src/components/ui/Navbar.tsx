@@ -87,11 +87,11 @@ export default function Navbar() {
       >
         {/* ── Logo + Wordmark ─────────────────────────── */}
         <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="flex items-center gap-2 pl-2 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
-            <span className="text-white text-xs font-bold">T</span>
+          <div className="w-7 h-7 shrink-0 overflow-hidden flex items-center justify-center">
+            <img src="/logos/icon-full.svg" alt="TravelBilling logo" className="w-full h-full object-contain" />
           </div>
-          <span className="text-[14px] font-semibold text-text-primary tracking-tight hidden sm:inline">
-            TravelBilling
+          <span className="text-[14px] font-bold uppercase text-text-primary tracking-[0.1em] hidden sm:inline">
+            TRAVELBILLING
           </span>
         </a>
 

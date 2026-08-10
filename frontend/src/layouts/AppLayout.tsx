@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
+import iconSimple from '../assets/icon-simple.svg';
 import { 
   LayoutDashboard, Building2, Ticket, FileText, BarChart3, Settings, 
   LogOut, User as UserIcon, Menu as MenuIcon, Upload, ClipboardList, 
@@ -216,8 +217,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           <div className="h-16 flex items-center justify-center p-6 mt-2 relative z-10">
           {!collapsed ? (
             <div className="flex items-center gap-3 w-full">
-              <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center shrink-0 shadow-sm">
-                <span className="text-white font-bold text-lg">TB</span>
+              <div className="w-10 h-10 rounded-lg shrink-0 shadow-sm overflow-hidden">
+                <img src={iconSimple} alt="TravelBill icon" className="w-full h-full block" />
               </div>
               <div className="flex flex-col">
                 <h1 className="text-[#12202D] text-[16px] font-bold leading-tight">TravelBill Pro</h1>
@@ -225,8 +226,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               </div>
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center shrink-0 shadow-sm">
-              <span className="text-white font-bold text-lg">TB</span>
+            <div className="w-10 h-10 rounded-lg shrink-0 shadow-sm overflow-hidden">
+              <img src={iconSimple} alt="TravelBill icon" className="w-full h-full block" />
             </div>
           )}
         </div>

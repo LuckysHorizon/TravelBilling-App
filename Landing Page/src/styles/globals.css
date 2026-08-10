@@ -203,3 +203,85 @@ body {
 
 /* GSAP will-change hints */
 .gsap-reveal { will-change: transform, opacity; }
+
+/* ── Landing Page White Theme Clouds ── */
+.landing-clouds {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.landing-cloud {
+  position: absolute;
+  display: block;
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+  background: transparent;
+  filter: blur(20px);
+  opacity: 0.35;
+  animation-name: landingCloudDrift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.landing-cloud--1 {
+  top: 15%;
+  left: -20%;
+  animation-duration: 72s;
+  box-shadow: 
+    0px 0px 0 80px rgba(230, 235, 240, 0.8),
+    -60px 25px 0 60px rgba(230, 235, 240, 0.8),
+    60px 15px 0 70px rgba(230, 235, 240, 0.8),
+    110px 35px 0 45px rgba(230, 235, 240, 0.8);
+}
+
+.landing-cloud--2 {
+  top: 40%;
+  left: -30%;
+  opacity: 0.3;
+  animation-duration: 108s;
+  box-shadow: 
+    0px 0px 0 100px rgba(235, 240, 245, 0.8),
+    -80px 40px 0 80px rgba(235, 240, 245, 0.8),
+    80px 25px 0 95px rgba(235, 240, 245, 0.8),
+    150px 50px 0 65px rgba(235, 240, 245, 0.8);
+}
+
+.landing-cloud--3 {
+  top: 65%;
+  left: -25%;
+  opacity: 0.25;
+  animation-duration: 88s;
+  box-shadow: 
+    0px 0px 0 70px rgba(240, 244, 248, 0.9),
+    -50px 25px 0 55px rgba(240, 244, 248, 0.9),
+    55px 20px 0 60px rgba(240, 244, 248, 0.9),
+    100px 30px 0 40px rgba(240, 244, 248, 0.9);
+}
+
+.landing-cloud--4 {
+  top: 85%;
+  left: -35%;
+  opacity: 0.3;
+  animation-duration: 120s;
+  box-shadow: 
+    0px 0px 0 90px rgba(230, 235, 240, 0.7),
+    -70px 30px 0 65px rgba(230, 235, 240, 0.7),
+    75px 20px 0 85px rgba(230, 235, 240, 0.7),
+    130px 45px 0 55px rgba(230, 235, 240, 0.7);
+}
+
+@keyframes landingCloudDrift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(160vw); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-cloud {
+    animation: none;
+  }
+}
