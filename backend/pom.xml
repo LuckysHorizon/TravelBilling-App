@@ -216,7 +216,7 @@
                         <spring.profiles.active>test</spring.profiles.active>
                     </systemPropertyVariables>
                     <environmentVariables>
-                        <DOCKER_HOST>npipe:////./pipe/docker_engine</DOCKER_HOST>
+                                            <DOCKER_HOST>npipe:////./pipe/dockerDesktopLinuxEngine</DOCKER_HOST>
                     </environmentVariables>
                 </configuration>
             </plugin>
