@@ -1,0 +1,63 @@
+name: Backend CI - tests
+
+on:
+  push:
+    branches: [ 'main' ]
+    paths:
+      - 'backend/**'
+  pull_request:
+    paths:
+      - 'backend/**'
+
+permissions:
+  contents: read
+
+jobs:
+  backend-test:
+    name: Backend - test (Maven + Testcontainers)
+    runs-on: ubuntu-latest
+    env:
+      MAVEN_OPTS: -Xmx2g
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Show Java version
+        run: java -version
+
+      - name: Verify Docker available
+        run: |
+          docker version
+          docker info
+
+      - name: Run Maven tests (with Testcontainers)
+        run: ./mvnw -B clean test
+        working-directory: ./backend
+        env:
+          # Ensure tests don't pick up any production credentials from the runner
+          SPRING_PROFILES_ACTIVE: test
+
+      - name: Upload surefire reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports
+
+      - name: Package on success
+        if: success()
+        run: ./mvnw -B -f backend/pom.xml package -DskipTests
+
+      - name: Upload artifact (jar)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
