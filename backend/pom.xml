@@ -217,7 +217,8 @@
                     </systemPropertyVariables>
                     <environmentVariables>
                                             <DOCKER_HOST>npipe:////./pipe/dockerDesktopLinuxEngine</DOCKER_HOST>
-                    </environmentVariables>
+                                            <DOCKER_CONTEXT>desktop-linux</DOCKER_CONTEXT>
+                                        </environmentVariables>
                 </configuration>
             </plugin>
 		</plugins>
