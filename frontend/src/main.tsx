@@ -17,6 +17,32 @@ const queryClient = new QueryClient({
   },
 })
 
+// --- AWS ECS Wake-up Trigger ---
+const wakeUrl = import.meta.env.VITE_AWS_WAKE_URL
+if (wakeUrl) {
+  // Use a fire-and-forget self-executing function to avoid blocking React
+  ;(async () => {
+    try {
+      console.log('[AWS Wake] Requesting backend startup')
+      const response = await fetch(wakeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        // Only sending a generic wake payload. No secrets exposed.
+        body: JSON.stringify({ action: 'wake' })
+      })
+      if (response.ok) {
+        console.log('[AWS Wake] Backend startup requested')
+      } else {
+        console.warn(`[AWS Wake] Wake request returned status: ${response.status}`)
+      }
+    } catch (error) {
+      console.error('[AWS Wake] Wake request failed', error)
+    }
+  })()
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Provider store={store}>

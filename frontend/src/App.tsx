@@ -22,8 +22,11 @@ import BillingPanels from './pages/BillingPanels';
 import EmployeeBilling from './pages/EmployeeBilling';
 import SuperAdmin from './pages/SuperAdmin';
 import { AgentFAB } from './components/agent/AgentFAB';
-
 import { Toaster } from './components/ui/sonner';
+
+// Keep the interval outside the component or use a ref inside to ensure it doesn't double-trigger
+let heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+let heartbeatMounted = false;
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
@@ -32,6 +35,38 @@ function App() {
   useEffect(() => {
     dispatch(checkAuthStatus());
   }, [dispatch]);
+
+  // --- AWS ECS Heartbeat Trigger ---
+  useEffect(() => {
+    if (heartbeatMounted) return;
+    heartbeatMounted = true;
+    
+    const wakeUrl = import.meta.env.VITE_AWS_WAKE_URL;
+    if (!wakeUrl) return;
+
+    const sendHeartbeat = async () => {
+      try {
+        const response = await fetch(wakeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'heartbeat' })
+        });
+        if (!response.ok) {
+          console.warn(`[AWS Wake] Heartbeat returned status: ${response.status}`);
+        }
+      } catch (error) {
+        // Silently tolerate network failures as requested
+      }
+    };
+
+    // Run approximately every 5 minutes
+    heartbeatIntervalId = setInterval(sendHeartbeat, 5 * 60 * 1000);
+
+    return () => {
+      if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
+      heartbeatMounted = false;
+    };
+  }, []);
 
   return (
     <BrowserRouter>

@@ -35,48 +35,58 @@ RENDER_DPI = 180
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 _rate_limit_interval = 60.0 / settings.groq_rate_limit_per_minute
 _last_call_time: float = 0.0
+_rate_limit_lock = asyncio.Lock()
 
 
 async def _rate_limit():
     """Simple token-bucket rate limiter. Async-safe."""
     global _last_call_time
-    now = time.monotonic()
-    wait = _rate_limit_interval - (now - _last_call_time)
-    if wait > 0:
-        log.debug("Rate limiter: waiting %.2fs", wait)
-        await asyncio.sleep(wait)
-    _last_call_time = time.monotonic()
+    async with _rate_limit_lock:
+        now = time.monotonic()
+        wait = _rate_limit_interval - (now - _last_call_time)
+        if wait > 0:
+            log.debug("Rate limiter: waiting %.2fs", wait)
+            await asyncio.sleep(wait)
+        _last_call_time = time.monotonic()
 
 
 # ── System prompts ────────────────────────────────────────────────────────────
 
 # Prompt for each page — extracts passengers AND fare if visible
-PAGE_PROMPT = """CRITICAL: You must respond with ONLY raw JSON. No markdown. No bullet points. No explanation.
+PAGE_PROMPT = """You are extracting data from ONE page of a travel invoice.
 
-You are extracting data from ONE page of a travel invoice.
-Your entire response must be a single JSON object starting with { and ending with }.
+RESPOND WITH ONLY A SINGLE JSON OBJECT. Your entire response must start with { and end with }.
+Do NOT include markdown, code fences, explanations, thinking, or any text outside the JSON.
 
-Example correct response:
-{"page_type":"PASSENGER","pnr_number":"H4TB7Q","operator_name":"IndiGo","travel_date":"2025-02-13","origin":"Raipur","destination":"Delhi","ticket_type":"FLIGHT","passengers":[{"passenger_name":"Mr HASAN REZA"}],"fare":null}
+JSON schema (use null for any field you cannot confidently extract):
+{
+  "page_type": "PASSENGER" | "FARE" | "MIXED",
+  "pnr_number": string or null,
+  "operator_name": string or null,
+  "travel_date": "yyyy-MM-dd" or null,
+  "origin": string or null,
+  "destination": string or null,
+  "ticket_type": "FLIGHT" | "BUS" | "TRAIN" | null,
+  "passengers": [{"passenger_name": "string"}],
+  "fare": {"base_fare_total": number, "total_amount": number} or null
+}
 
-Example for fare page:
-{"page_type":"FARE","pnr_number":"H4TB7Q","operator_name":null,"travel_date":null,"origin":null,"destination":null,"ticket_type":null,"passengers":[],"fare":{"base_fare_total":16346.00,"total_amount":18816.00}}
+CRITICAL RULES:
+1. travel_date = the actual journey/flight/departure date, NOT the booking/issue/purchase date.
+   If the document shows "Date of Booking: 15 Jan" and "Flight Date: 18 Jan", travel_date is "2025-01-18".
+2. pnr_number = the actual alphanumeric booking reference code (e.g. "H4TB7Q", "EYC8NQ").
+   NEVER return field labels like "PNR", "Number", "Reference", or "Booking Reference" as the pnr_number value.
+3. passenger_name = the actual person's name. NEVER return labels like "Passenger", "Name", or "Traveller".
+4. operator_name = the actual airline/bus/train company name. NEVER return labels like "Operator" or "Carrier".
+5. origin and destination = actual city or airport names. NEVER return labels like "Origin" or "Destination".
+6. If you cannot confidently identify any field's actual value, return null for that field.
+7. Do NOT guess or fabricate values.
+8. fare.base_fare_total = airfare/base fare BEFORE taxes (total for ALL passengers).
+9. fare.total_amount = grand total INCLUDING all taxes (total for ALL passengers).
+10. passengers array should be empty [] if no passenger names are visible on this page.
 
-Fields:
-- page_type: "PASSENGER" or "FARE" or "MIXED"
-- pnr_number: alphanumeric string or null
-- operator_name: airline/bus/train name or null
-- travel_date: yyyy-MM-dd format or null
-- origin: city name or null
-- destination: city name or null
-- ticket_type: "FLIGHT" or "BUS" or "TRAIN" or null
-- passengers: array of {"passenger_name": "string"} — empty array [] if no passengers on this page
-- fare: {"base_fare_total": number, "total_amount": number} or null if no fare info on this page
-  - base_fare_total = airfare/base fare BEFORE taxes
-  - total_amount = grand total INCLUDING all taxes
-  - These are TOTAL amounts for ALL passengers (not per person)
-
-RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
+Example:
+{"page_type":"PASSENGER","pnr_number":"H4TB7Q","operator_name":"IndiGo","travel_date":"2025-02-13","origin":"Raipur","destination":"Delhi","ticket_type":"FLIGHT","passengers":[{"passenger_name":"Mr HASAN REZA"}],"fare":null}"""
 
 
 # ── Main extraction functions ────────────────────────────────────────────────
@@ -106,6 +116,7 @@ async def _extract_from_images(page_images: list[str]) -> dict[str, Any]:
     # Call Groq for each page
     page_results = []
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0}
+    failed_pages = 0
 
     for i, image_b64 in enumerate(page_images):
         page_num = i + 1
@@ -116,12 +127,22 @@ async def _extract_from_images(page_images: list[str]) -> dict[str, Any]:
             page_num=page_num,
             total_pages=total_pages,
         )
+        if not raw_response:
+            log.warning("Page %d failed to extract; skipping.", page_num)
+            failed_pages += 1
+            continue
+
         total_usage["prompt_tokens"] += usage.get("prompt_tokens", 0)
         total_usage["completion_tokens"] += usage.get("completion_tokens", 0)
 
         page_data = _parse_page_response(raw_response, page_num)
         if page_data:
             page_results.append(page_data)
+        else:
+            log.warning("Page %d parsing failed; skipping.", page_num)
+            failed_pages += 1
+
+    log.info("Extraction completed: %d/%d pages successfully processed", total_pages - failed_pages, total_pages)
 
     if not page_results:
         raise ValueError("No valid data extracted from any page")
@@ -202,8 +223,8 @@ async def _call_groq_single(
     image_b64: str,
     page_num: int,
     total_pages: int,
-    max_retries: int = 3,
-) -> tuple[str, dict]:
+    max_retries: int = 5,
+) -> tuple[str | None, dict]:
     """
     POST to Groq vision API with ONE page image.
     Returns (raw_content_string, usage_dict).
@@ -222,7 +243,7 @@ async def _call_groq_single(
 
     payload = {
         "model": settings.groq_model,
-        "max_tokens": 4096,
+        "max_tokens": 2048,
         "temperature": 0.0,
         "stream": False,
         "messages": [
@@ -236,11 +257,23 @@ async def _call_groq_single(
         "Content-Type": "application/json",
     }
 
-    delay = 2.0
+    import random
+    delay = 4.0
+    max_delay = 20.0
+    
+    # Bound the entire extraction time to avoid backend timeouts
+    # Leave a 5s buffer from the absolute timeout
+    start_time = time.monotonic()
+    deadline = start_time + max(10, settings.groq_timeout_seconds - 5.0)
+
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(settings.groq_timeout_seconds, connect=10.0)
     ) as client:
         for attempt in range(1, max_retries + 1):
+            if time.monotonic() > deadline:
+                log.error("Page %d: Bounded time exceeded before attempt %d", page_num, attempt)
+                break
+
             await _rate_limit()
 
             log.info(
@@ -249,11 +282,19 @@ async def _call_groq_single(
             )
             call_start = time.monotonic()
 
-            response = await client.post(
-                settings.groq_api_url,
-                json=payload,
-                headers=headers,
-            )
+            try:
+                response = await client.post(
+                    settings.groq_api_url,
+                    json=payload,
+                    headers=headers,
+                )
+            except httpx.RequestError as e:
+                log.error("Groq request failed on page %d: %s", page_num, e)
+                if time.monotonic() + delay > deadline:
+                    break
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay)
+                continue
 
             elapsed = int((time.monotonic() - call_start) * 1000)
             log.info("Groq responded %d in %dms (page %d)", response.status_code, elapsed, page_num)
@@ -266,38 +307,134 @@ async def _call_groq_single(
                 return content, usage
 
             if response.status_code in (429, 503):
-                log.warning(
-                    "Groq %d — backing off %.1fs before retry",
-                    response.status_code, delay,
-                )
-                await asyncio.sleep(delay)
-                delay *= 2
+                retry_after = response.headers.get("retry-after")
+                if retry_after and retry_after.isdigit():
+                    wait_time = float(retry_after)
+                    log.warning("Groq %d on page %d — respect Retry-After header: %.1fs", response.status_code, page_num, wait_time)
+                else:
+                    jitter = random.uniform(0.0, 1.0)
+                    wait_time = delay + jitter
+                    log.warning("Groq %d on page %d — backing off %.1fs before retry", response.status_code, page_num, wait_time)
+                
+                if time.monotonic() + wait_time > deadline:
+                    log.error("Page %d: Wait time %.1fs would exceed deadline. Aborting retries.", page_num, wait_time)
+                    break
+                    
+                await asyncio.sleep(wait_time)
+                delay = min(delay * 2, max_delay)
                 continue
 
-            raise httpx.HTTPStatusError(
-                f"Groq returned {response.status_code}: {response.text[:200]}",
-                request=response.request,
-                response=response,
-            )
+            log.error("Groq returned %d on page %d: %.200s", response.status_code, page_num, response.text)
+            return None, {}
 
-    raise RuntimeError(f"Groq failed after {max_retries} attempts for page {page_num}")
+    log.error("Groq failed after %d attempts (or timeout) for page %d", attempt, page_num)
+    return None, {}
+
+
+# ── Field validation ──────────────────────────────────────────────────────────
+
+# Values that are field labels, not actual data
+_GARBAGE_PNR = {
+    "pnr", "number", "reference", "booking reference", "booking ref",
+    "pnr number", "pnr no", "ref", "confirmation", "booking",
+}
+_GARBAGE_NAMES = {
+    "passenger", "name", "traveller", "traveler", "passenger name",
+    "pax", "pax name",
+}
+_GARBAGE_LOCATIONS = {
+    "origin", "destination", "from", "to", "departure", "arrival",
+    "source", "city", "airport",
+}
+_GARBAGE_OPERATORS = {
+    "operator", "carrier", "airline", "operator name", "carrier name",
+}
+
+
+def _sanitize_string_field(value: Any, garbage_set: set[str]) -> str | None:
+    """Return None if value is missing, empty, or a known garbage label."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s or s.lower() == "null" or s.lower() == "n/a" or s.lower() == "none":
+        return None
+    if s.lower() in garbage_set:
+        return None
+    return s
+
+
+def _sanitize_extracted_data(data: dict) -> dict:
+    """Sanitize extracted fields to prevent garbage label values."""
+    data["pnr_number"] = _sanitize_string_field(
+        data.get("pnr_number"), _GARBAGE_PNR
+    )
+    data["operator_name"] = _sanitize_string_field(
+        data.get("operator_name"), _GARBAGE_OPERATORS
+    )
+    data["origin"] = _sanitize_string_field(
+        data.get("origin"), _GARBAGE_LOCATIONS
+    )
+    data["destination"] = _sanitize_string_field(
+        data.get("destination"), _GARBAGE_LOCATIONS
+    )
+
+    # Sanitize passenger names
+    passengers = data.get("passengers") or []
+    clean_passengers = []
+    for p in passengers:
+        if isinstance(p, dict):
+            name = _sanitize_string_field(
+                p.get("passenger_name"), _GARBAGE_NAMES
+            )
+            if name:
+                p["passenger_name"] = name
+                clean_passengers.append(p)
+    data["passengers"] = clean_passengers
+
+    # Sanitize travel_date — reject if it looks like a label, not a date
+    td = data.get("travel_date")
+    if td is not None:
+        td_str = str(td).strip()
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', td_str):
+            log.warning("travel_date '%s' is not yyyy-MM-dd format — setting to null", td_str)
+            data["travel_date"] = None
+
+    return data
+
+
+def _safe_float(val: Any) -> float | None:
+    """Safely convert a string/value to a float, returning None on failure."""
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s or s.lower() in ("null", "n/a", "none"):
+        return None
+    
+    # Remove commas, currency symbols, and spaces
+    s = re.sub(r'[^\d.-]', '', s)
+    if not s:
+        return None
+        
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
 
 
 # ── Page response parsing ─────────────────────────────────────────────────────
 
 def _parse_page_response(raw_content: str, page_num: int) -> dict | None:
-    """Parse the JSON object from a single page's NVIDIA response.
+    """Parse the JSON object from a single page's Groq response.
     Falls back to regex-based Markdown parsing if JSON fails."""
     clean = raw_content.strip()
 
+    # Strip <think>...</think> blocks some models emit
+    clean = re.sub(r'<think>[\s\S]*?</think>', '', clean).strip()
+
     # Strip markdown code fences
-    if clean.startswith("```"):
-        clean = clean.lstrip("`")
-        if clean.startswith("json"):
-            clean = clean[4:]
-        if clean.endswith("```"):
-            clean = clean[:-3]
-        clean = clean.strip()
+    fence_match = re.match(r'^```(?:json)?\s*([\s\S]*?)\s*```$', clean, re.DOTALL)
+    if fence_match:
+        clean = fence_match.group(1).strip()
 
     # Try to find JSON within the response (model may add text around it)
     json_match = re.search(r'\{[\s\S]*\}', clean)
@@ -305,21 +442,26 @@ def _parse_page_response(raw_content: str, page_num: int) -> dict | None:
         try:
             data = json.loads(json_match.group())
             if isinstance(data, dict):
+                data = _sanitize_extracted_data(data)
                 data["_page_num"] = page_num
                 log.info(
-                    "Page %d: type=%s, passengers=%d, has_fare=%s",
+                    "Page %d: type=%s, passengers=%d, has_fare=%s, pnr=%s",
                     page_num,
                     data.get("page_type", "?"),
                     len(data.get("passengers") or []),
                     bool(data.get("fare")),
+                    data.get("pnr_number"),
                 )
                 return data
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            log.warning("Page %d: JSON decode failed: %s", page_num, e)
 
     # Fallback: parse Markdown/text response
     log.warning("Page %d: No valid JSON found. Attempting Markdown/text parsing...", page_num)
-    return _parse_markdown_response(clean, page_num)
+    result = _parse_markdown_response(clean, page_num)
+    if result:
+        result = _sanitize_extracted_data(result)
+    return result
 
 
 def _parse_markdown_response(text: str, page_num: int) -> dict | None:
@@ -393,10 +535,15 @@ def _parse_markdown_response(text: str, page_num: int) -> dict | None:
     if base_match or total_match:
         fare = {}
         if base_match:
-            fare["base_fare_total"] = float(base_match.group(1).replace(",", ""))
+            f = _safe_float(base_match.group(1))
+            if f is not None:
+                fare["base_fare_total"] = f
         if total_match:
-            fare["total_amount"] = float(total_match.group(1).replace(",", ""))
-        result["fare"] = fare
+            f = _safe_float(total_match.group(1))
+            if f is not None:
+                fare["total_amount"] = f
+        if fare:
+            result["fare"] = fare
 
     # Determine page type
     has_passengers = len(result["passengers"]) > 0
@@ -470,16 +617,12 @@ def _merge_pages(page_results: list[dict]) -> list[dict]:
         if fare and isinstance(fare, dict):
             bf = fare.get("base_fare_total")
             ta = fare.get("total_amount")
-            if bf is not None and str(bf).lower() != "null":
-                try:
-                    base_fare_total = float(str(bf).replace(",", ""))
-                except (ValueError, TypeError):
-                    pass
-            if ta is not None and str(ta).lower() != "null":
-                try:
-                    total_amount_all = float(str(ta).replace(",", ""))
-                except (ValueError, TypeError):
-                    pass
+            fbf = _safe_float(bf)
+            if fbf is not None:
+                base_fare_total = fbf
+            fta = _safe_float(ta)
+            if fta is not None:
+                total_amount_all = fta
 
     # If no passengers found, create one "Unknown" record
     if not all_passengers:

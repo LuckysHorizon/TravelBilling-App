@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # ── Groq API ──────────────────────────────────────────────
     groq_api_key: str
     groq_api_url: str = "https://api.groq.com/openai/v1/chat/completions"
-    groq_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    groq_model: str = "qwen/qwen3.6-27b"
     groq_timeout_seconds: int = 60
     groq_rate_limit_per_minute: int = 30
 
