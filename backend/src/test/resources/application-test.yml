@@ -1,0 +1,1 @@
+spring:\n  datasource:\n    # values will be provided at runtime by Testcontainers via DynamicPropertySource\n    driver-class-name: org.postgresql.Driver\n  flyway:\n    # keep Flyway enabled for integration tests against Testcontainers Postgres\n    enabled: true\n\nlogging:\n  level:\n    org.springframework: INFO\n    com.travelbillpro: DEBUG\n
