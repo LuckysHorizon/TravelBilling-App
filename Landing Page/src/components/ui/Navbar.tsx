@@ -9,8 +9,12 @@ import { useState, useEffect, useRef } from 'react'
 import { Button } from './button'
 import { useSmoothScroll } from '../../hooks/useSmoothScroll'
 
-/** Frontend app base URL — update for production */
-const APP_URL = import.meta.env.VITE_APP_URL || 'http://localhost:3000'
+/** TravelBilling application URL — driven by VITE_TRAVELBILLING_URL */
+const TRAVELBILLING_URL = import.meta.env.VITE_TRAVELBILLING_URL
+
+if (!TRAVELBILLING_URL) {
+  console.warn('[Landing Page] VITE_TRAVELBILLING_URL is not set. Sign In / Get Started buttons will not redirect.')
+}
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -134,12 +138,12 @@ export default function Navbar() {
         {/* ── Auth Actions ────────────────────────────── */}
         <div className="hidden md:flex items-center gap-2 pr-1">
           <a
-            href={`${APP_URL}/login`}
+            href={TRAVELBILLING_URL || '#'}
             className="text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors px-3 py-1.5"
           >
             Sign In
           </a>
-          <Button render={<a href={`${APP_URL}/login`} className="text-[13px] font-semibold" />} className="rounded-full">
+          <Button render={<a href={TRAVELBILLING_URL || '#'} className="text-[13px] font-semibold" />} className="rounded-full">
             Get Started
           </Button>
         </div>
@@ -191,10 +195,10 @@ export default function Navbar() {
             </a>
           ))}
           <div className="pt-2 border-t border-border-light mt-2 flex gap-2">
-            <a href={`${APP_URL}/login`} onClick={() => setMobileOpen(false)} className="flex-1 text-center text-[14px] font-medium text-text-secondary py-2.5 rounded-xl hover:bg-black/[0.03]">
+            <a href={TRAVELBILLING_URL || '#'} onClick={() => setMobileOpen(false)} className="flex-1 text-center text-[14px] font-medium text-text-secondary py-2.5 rounded-xl hover:bg-black/[0.03]">
               Sign In
             </a>
-            <Button render={<a href={`${APP_URL}/login`} onClick={() => setMobileOpen(false)} className="text-[14px] font-semibold" />} className="flex-1 rounded-full">
+            <Button render={<a href={TRAVELBILLING_URL || '#'} onClick={() => setMobileOpen(false)} className="text-[14px] font-semibold" />} className="flex-1 rounded-full">
               Get Started
             </Button>
           </div>
