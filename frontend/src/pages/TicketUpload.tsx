@@ -41,6 +41,7 @@ const TicketUpload = () => {
     try {
       const response = await api.post('/tickets/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000, // 3 minutes — PDF extraction can take >30s for multi-page documents
       });
       if (response.data && response.data.length > 0) {
         toast.success(`Tickets uploaded and extracted successfully (${response.data.length} record(s)).`);
@@ -67,6 +68,11 @@ const TicketUpload = () => {
       const isAllowed = file.type === 'application/pdf' || file.type === 'image/jpeg' || file.type === 'image/png';
       if (!isAllowed) {
         toast.error(`${file.name} is not a valid format. Only PDF, JPG, PNG allowed.`);
+        return Upload.LIST_IGNORE;
+      }
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} exceeds the 10MB limit.`);
         return Upload.LIST_IGNORE;
       }
       setFileList([...fileList, file]);

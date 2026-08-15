@@ -219,8 +219,14 @@ def lambda_handler(event, context):
         ZipFile=wake_zip.read()
     )
     
-    # It might take a moment to update code before updating configuration
-    time.sleep(3)
+    print("Waiting for TravelBillingWake update to complete...")
+    while True:
+        status = lam.get_function(FunctionName='TravelBillingWake')['Configuration']['LastUpdateStatus']
+        if status == 'Successful':
+            break
+        elif status == 'Failed':
+            raise Exception("Lambda update failed")
+        time.sleep(2)
     lam.update_function_configuration(
         FunctionName='TravelBillingWake',
         Handler='wake_lambda.lambda_handler',
@@ -292,7 +298,14 @@ def lambda_handler(event, context):
             FunctionName='TravelBillingAutoShutdown',
             ZipFile=shutdown_zip.read()
         )
-        time.sleep(3)
+        print("Waiting for TravelBillingAutoShutdown update to complete...")
+        while True:
+            status = lam.get_function(FunctionName='TravelBillingAutoShutdown')['Configuration']['LastUpdateStatus']
+            if status == 'Successful':
+                break
+            elif status == 'Failed':
+                raise Exception("Lambda update failed")
+            time.sleep(2)
         lam.update_function_configuration(
             FunctionName='TravelBillingAutoShutdown',
             Handler='shutdown_lambda.lambda_handler',

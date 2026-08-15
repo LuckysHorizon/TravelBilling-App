@@ -95,14 +95,22 @@ async def extract_from_pdf(file_path: str) -> dict[str, Any]:
     """Full pipeline: PDF file -> rendered images -> Groq vision (per page) -> merge -> structured JSON."""
     page_images = _render_pdf_to_images(file_path)
     log.info("Rendered %d page(s) from %s", len(page_images), Path(file_path).name)
-    return await _extract_from_images(page_images)
+    try:
+        return await asyncio.wait_for(_extract_from_images(page_images), timeout=110.0)
+    except asyncio.TimeoutError:
+        log.error("Global extraction deadline (110s) exceeded")
+        raise ValueError("Extraction timed out after 110 seconds")
 
 
 async def extract_from_bytes(pdf_bytes: bytes) -> dict[str, Any]:
     """Full pipeline: PDF bytes -> rendered images -> Groq vision (per page) -> merge -> structured JSON."""
     page_images = _render_bytes_to_images(pdf_bytes)
     log.info("Rendered %d page(s) from uploaded bytes (%d bytes)", len(page_images), len(pdf_bytes))
-    return await _extract_from_images(page_images)
+    try:
+        return await asyncio.wait_for(_extract_from_images(page_images), timeout=110.0)
+    except asyncio.TimeoutError:
+        log.error("Global extraction deadline (110s) exceeded")
+        raise ValueError("Extraction timed out after 110 seconds")
 
 
 async def _extract_from_images(page_images: list[str]) -> dict[str, Any]:
