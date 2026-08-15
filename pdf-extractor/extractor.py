@@ -81,8 +81,9 @@ CRITICAL RULES:
 5. origin and destination = actual city or airport names. NEVER return labels like "Origin" or "Destination".
 6. If you cannot confidently identify any field's actual value, return null for that field.
 7. Do NOT guess or fabricate values.
-8. fare.base_fare_total = airfare/base fare BEFORE taxes (total for ALL passengers).
-9. fare.total_amount = grand total INCLUDING all taxes (total for ALL passengers).
+8. fare.base_fare_total = Extract Basic Fare / Base Fare only (total for ALL passengers).
+9. fare.total_amount = Extract the explicit Total Fare / Total Amount / Grand Total / Amount Paid shown on the ticket (total for ALL passengers).
+IMPORTANT: If both Basic Fare and Total Fare are present, total_amount MUST use the Total Fare, not Basic Fare. Do not substitute Basic Fare for Total Fare. Do not calculate total_amount when an explicit Total Fare is present.
 10. passengers array should be empty [] if no passenger names are visible on this page.
 
 Example:
@@ -537,7 +538,7 @@ def _parse_markdown_response(text: str, page_num: int) -> dict | None:
             result["passengers"].append({"passenger_name": clean_name})
 
     # Extract fare amounts
-    base_match = re.search(r'(?:Airfare|Base\s*Fare|Air\s*Fare)[:\s]*[\u20b9INR\s]*([0-9,]+\.?\d*)', text, re.IGNORECASE)
+    base_match = re.search(r'(?:Airfare|Basic\s*Fare|Base\s*Fare|Air\s*Fare)[:\s]*[\u20b9INR\s]*([0-9,]+\.?\d*)', text, re.IGNORECASE)
     total_match = re.search(r'(?:Total\s*(?:Charge|Fare|Amount)|Grand\s*Total|Amount\s*Payable)[:\s]*[\u20b9INR\s]*([0-9,]+\.?\d*)', text, re.IGNORECASE)
 
     if base_match or total_match:

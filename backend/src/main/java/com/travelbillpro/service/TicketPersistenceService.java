@@ -223,12 +223,8 @@ public class TicketPersistenceService {
             ticket.setSgst(BigDecimal.ZERO);
         }
 
-        // Total amount: if null, calculate or use base fare
-        if (ticket.getTotalAmount() == null) {
-            ticket.setTotalAmount(ticket.getBaseFare() != null
-                    ? ticket.getBaseFare()
-                    : BigDecimal.ZERO);
-        }
+        // Total amount: Leave as null if not explicitly extracted.
+        // Do not artificially clone base_fare into total_amount.
 
         // Status: if still null (not set to PENDING_REVIEW above), default to PENDING_REVIEW
         if (ticket.getStatus() == null) {
